@@ -196,8 +196,10 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  log({ kind: 'error', text: String(err.stack ?? err) });
-  save();
-  process.exit(1);
-});
+main()
+  .then(() => jsonl.end(() => process.exit(0)))
+  .catch((err) => {
+    log({ kind: 'error', text: String(err.stack ?? err) });
+    save();
+    jsonl.end(() => process.exit(1));
+  });
