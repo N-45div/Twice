@@ -1,1 +1,1 @@
-{ "name": "twice-web", "private": true, "type": "module", "scripts": { "start": "node serve.mjs" } }
+{ "name": "twice-web", "private": true, "type": "module", "scripts": { "build": "echo static", "start": "node serve.mjs" } }

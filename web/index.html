@@ -107,7 +107,11 @@ function render(run) {
     l.startsWith('+') && !l.startsWith('+++') ? `<span class="add">${l}</span>` : l.startsWith('-') && !l.startsWith('---') ? `<span class="del">${l}</span>` : l.startsWith('@@') ? `<span class="hunk">${l}</span>` : l).join('\n');
   document.getElementById('foot').innerHTML = `Run ${esc(run.id)} · stack set up with Stripe Projects · code runs in CreateOS sandboxes · <a href="https://github.com/N-45div/Twice">source</a>`;
 }
-fetch('run.json').then((r) => r.json()).then(render).catch(() => { document.getElementById('grid').textContent = 'No run recorded yet.'; });
+const LIVE = 'https://raw.githubusercontent.com/N-45div/Twice/main/web/run.json';
+fetch(LIVE, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject()))
+  .catch(() => fetch('run.json').then((r) => r.json()))
+  .then(render)
+  .catch(() => { document.getElementById('grid').textContent = 'No run recorded yet.'; });
 </script>
 </body>
 </html>
