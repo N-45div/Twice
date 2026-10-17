@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twice</title>
+<style>body{margin:0;background:#111317;color:#9aa1ad;font:15px system-ui,sans-serif;display:grid;place-items:center;height:100vh}</style>
+</head>
+<body>
+<p>Loading Twice…</p>
+<script>
+// Always show the latest viewer from the repo, so new runs and features need no redeploy.
+fetch('https://raw.githubusercontent.com/N-45div/Twice/main/web/index.html', { cache: 'no-store' })
+  .then((r) => (r.ok ? r.text() : Promise.reject()))
+  .then((html) => { document.open(); document.write(html); document.close(); })
+  .catch(() => location.replace('app.html'));
+</script>
+</body>
+</html>

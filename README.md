@@ -4,7 +4,7 @@
 
 Demo video (2 min): https://youtu.be/tPClB1H2_64
 
-Live run viewer: https://dep-0323402d-85cd-4aab-b3a1-bf3084f59031.tyzo.nodeops.app
+Live run viewer: https://dep-7f478f70-2537-427a-9b65-a9113c2d880f.tyzo.nodeops.app
 
 ## What it found
 

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twice</title>
+<meta name="description" content="Twice finds the Stripe event orders that break your app, then fixes the app.">
+<style>
+  :root {
+    --bg: #fbfaf7; --panel: #ffffff; --ink: #16181d; --muted: #5d6470; --line: #e6e2da;
+    --ok: #127a46; --ok-bg: #e8f5ee; --bad: #b3261e; --bad-bg: #fbeceb; --accent: #4b45d6; --code: #f4f2ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111317; --panel: #181b21; --ink: #eceef2; --muted: #9aa1ad; --line: #2a2f38;
+      --ok: #5fd39a; --ok-bg: #12261c; --bad: #ff8a80; --bad-bg: #2c1615; --accent: #9c97ff; --code: #1f232a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+  header h1 { font-size: 40px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.02em; }
+  header p { color: var(--muted); max-width: 720px; margin: 0; font-size: 17px; }
+  .brand { font-weight: 700; color: var(--accent); letter-spacing: 0.02em; margin-bottom: 18px; display: block; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 28px 0; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .stat b { display: block; font-size: 28px; line-height: 1.1; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .bad b { color: var(--bad); } .ok b { color: var(--ok); }
+  h2 { font-size: 20px; margin: 36px 0 12px; }
+  .tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .tabs button { border: 0; background: var(--panel); color: var(--ink); padding: 8px 14px; font: inherit; cursor: pointer; }
+  .tabs button.on { background: var(--ink); color: var(--bg); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .tile { border-radius: 12px; padding: 14px; border: 1px solid var(--line); background: var(--panel); }
+  .tile.fail { border-color: var(--bad); background: var(--bad-bg); }
+  .tile.pass { border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+  .tile h3 { margin: 0 0 2px; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+  .tile .why { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .pill { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .fail .pill { background: var(--bad); color: #fff; } .pass .pill { background: var(--ok-bg); color: var(--ok); }
+  .seq { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .seq code { font-size: 11.5px; background: var(--code); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; }
+  .diffs { font-size: 13px; margin: 0; padding-left: 18px; }
+  .diffs li { margin: 2px 0; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .log { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 0; max-height: 520px; overflow: auto; }
+  .log div { padding: 6px 14px; border-bottom: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
+  .log div:last-child { border-bottom: 0; }
+  .log .k { display: inline-block; min-width: 78px; color: var(--muted); font-size: 12px; }
+  pre.diff { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow: auto; font-size: 12.5px; max-height: 560px; }
+  .add { color: var(--ok); } .del { color: var(--bad); } .hunk { color: var(--accent); }
+  .now { margin: 24px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--accent); font-weight: 600; }
+  .now::before { content: '● LIVE  '; color: var(--bad); font-size: 12px; letter-spacing: 0.08em; }
+  body.live .wrap { max-width: 1860px; padding-top: 20px; }
+  body.live header p { display: none; }
+  body.live header h1 { font-size: 30px; margin: 0; }
+  body.live .cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
+  body.live .log { max-height: 760px; }
+  body.live .stats { margin: 16px 0; }
+  body.live h2 { margin-top: 18px; }
+  body.live footer, body.live .diffhead, body.live #diff { display: none; }
+  body.live .grid { grid-template-columns: repeat(3, 1fr); }
+  body.live .tile { padding: 10px 12px; }
+  body.live .tile .why { display: none; }
+  .targets { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 0; }
+  .targets button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 99px; padding: 6px 14px; font: inherit; font-size: 14px; cursor: pointer; }
+  .targets button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .targets span { color: var(--muted); font-size: 13px; align-self: center; margin-right: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; }
+  .actions button { border: 1px solid var(--accent); background: transparent; color: var(--accent); border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .actions button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .actions small { color: var(--muted); align-self: center; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
+  a { color: var(--accent); }
+  @media (max-width: 520px) { header h1 { font-size: 30px; } .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="brand">TWICE</span>
+    <h1>A 200 isn't enough.</h1>
+    <p>Twice is an agent that tests your Stripe webhook handler against the delivery orders Stripe's docs say will happen: duplicates, events out of order, late retries and dropped deliveries. It boots your real app and database in a CreateOS sandbox, replays signed events in every hostile order, checks what actually ended up in the database, then writes the fix and proves it.</p>
+  </header>
+  <div class="targets" id="targets"></div>
+  <div class="now" id="now" hidden></div>
+  <div class="stats" id="stats"></div>
+  <h2>Every delivery order it tried</h2>
+  <div class="tabs" id="tabs"></div>
+  <div class="grid" id="grid"></div>
+  <h2>What the agent did</h2>
+  <div class="log" id="log"></div>
+  <h2 class="diffhead">The fix it wrote</h2>
+  <div class="actions diffhead" id="actions"></div>
+  <pre class="diff mono" id="diff">No fix needed.</pre>
+  <footer id="foot"></footer>
+</div>
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const short = (t) => t.replace('customer.subscription.', 'sub.').replace('invoice.', 'inv.');
+function tiles(list) {
+  return list.map((r) => {
+    const seq = (r.deliveries || []).map((d) => `<code>${esc(short(d.type))} · ${esc(d.status)}</code>`).join('');
+    const diffs = r.ok ? `<p class="why">Ended in the right state.</p>` :
+      `<ul class="diffs">${r.diffs.map((d) => `<li><span class="mono">${esc(d.column)}</span>: ended <b>${esc(JSON.stringify(d.actual))}</b>, should be <b>${esc(JSON.stringify(d.expected))}</b></li>`).join('')}</ul>`;
+    return `<div class="tile ${r.ok ? 'pass' : 'fail'}"><h3>${esc(r.name)}<span class="pill">${r.ok ? 'OK' : 'BROKEN'}</span></h3><p class="why">${esc(r.why || '')}</p><div class="seq">${seq}</div>${diffs}</div>`;
+  }).join('');
+}
+function prText(run) {
+  const before = run.before || [], after = run.after || [];
+  const broken = before.filter((r) => !r.ok);
+  const fix = [...run.events].reverse().find((e) => e.kind === 'agent_done')?.text || '';
+  const lines = [
+    `## Make Stripe webhook handling safe against duplicate, late and out-of-order events`,
+    ``,
+    `Stripe does not guarantee event order and can deliver the same event more than once. Twice replayed signed Stripe events against this app in ${before.length} delivery orders; ${broken.length} left the database in the wrong state${before.every((r) => (r.deliveries || []).every((d) => d.status === 200)) ? ' while every request returned HTTP 200' : ''}.`,
+    ``,
+    `### Orders that broke`,
+    ...broken.map((r) => `- **${r.name}** (${r.deliveries.map((d) => d.type.replace('customer.subscription.', '')).join(' → ')}): ${r.diffs.map((d) => `\`${d.column}\` ended ${JSON.stringify(d.actual)}, should be ${JSON.stringify(d.expected)}`).join('; ')}`),
+    ``,
+    `### The fix`,
+    fix,
+    ``,
+    `### Verification`,
+    after.length ? `After this change, ${after.filter((r) => !r.ok).length} of ${after.length} delivery orders are wrong (every order re-run from a clean database).` : `Not re-run yet.`,
+    ``,
+    `Found and fixed by [Twice](https://github.com/N-45div/Twice).`,
+  ];
+  return lines.join(String.fromCharCode(10));
+}
+function actions(run) {
+  const el = document.getElementById('actions');
+  if (!run.diff) { el.innerHTML = ''; return; }
+  el.innerHTML = `<button id="dl">Download the fix (.patch)</button><button id="pr">Copy PR description</button><small id="msg"></small>`;
+  document.getElementById('dl').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([run.diff], { type: 'text/x-diff' }));
+    a.download = `twice-${(run.target || 'fix').replace(/[^a-z0-9]+/gi, '-')}.patch`;
+    a.click();
+  };
+  document.getElementById('pr').onclick = async () => {
+    try { await navigator.clipboard.writeText(prText(run)); document.getElementById('msg').textContent = 'Copied.'; }
+    catch { document.getElementById('msg').textContent = 'Copy failed; select the text below instead.'; }
+  };
+}
+function render(run) {
+  const before = run.before || [], after = run.after || [];
+  const bad = before.filter((r) => !r.ok).length, badAfter = after.filter((r) => !r.ok).length;
+  const allOk = before.length && before.every((r) => (r.deliveries || []).every((d) => d.status === 200));
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><b>${esc(run.target)}</b><span>app under test, booted in a CreateOS sandbox</span></div>
+    <div class="stat ${bad ? 'bad' : 'ok'}"><b>${bad} of ${before.length}</b><span>delivery orders left the database wrong${allOk ? ', while every request returned 200' : ''}</span></div>
+    <div class="stat ${badAfter ? 'bad' : 'ok'}"><b>${after.length ? `${badAfter} of ${after.length}` : '–'}</b><span>still wrong after the agent's fix</span></div>
+    <div class="stat"><b>${esc(run.mode === 'fork' ? 'One copy each' : 'One sandbox')}</b><span>${run.mode === 'fork' ? 'each order ran in its own fork of the paused, booted app' : 'orders ran one after another, database reset between them'}</span></div>`;
+  const tabs = document.getElementById('tabs');
+  const sets = [['Before the fix', before], ['After the fix', after]].filter(([, l]) => l.length);
+  const pick = run.live ? sets.length - 1 : 0;
+  tabs.innerHTML = sets.map(([n], i) => `<button class="${i === pick ? 'on' : ''}" data-i="${i}">${n}</button>`).join('');
+  const grid = document.getElementById('grid');
+  grid.innerHTML = tiles(sets[pick]?.[1] || []);
+  tabs.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...tabs.children].forEach((x) => x.classList.toggle('on', x === b)); grid.innerHTML = tiles(sets[b.dataset.i][1]); };
+  const keep = new Set(['resumed', 'egress', 'phase', 'agent_run', 'agent_write', 'agent_done', 'baseline', 'summary', 'paused', 'forked', 'end']);
+  document.getElementById('log').innerHTML = run.events.filter((e) => keep.has(e.kind)).map((e) => {
+    const label = { resumed: 'resumed', egress: 'network', phase: 'step', agent_run: 'ran', agent_write: 'wrote', agent_done: 'agent', baseline: 'checked', summary: 'result', paused: 'paused', forked: 'forked', end: 'done' }[e.kind];
+    const text = e.kind === 'agent_run' ? `<span class="mono">${esc(e.command)}</span>` : e.kind === 'agent_write' ? `<span class="mono">${esc(e.path)}</span>` :
+      e.kind === 'baseline' ? `In-order delivery ${e.ok ? 'matches' : 'does not match'} the spec` : e.kind === 'forked' ? `${esc(e.name)} → ${esc(e.sandbox)} in ${(e.ms / 1000).toFixed(1)} s` : esc(e.text);
+    return `<div><span class="k">${label}</span> ${text}</div>`;
+  }).join('');
+  const now = document.getElementById('now');
+  if (run.live) {
+    const last = [...run.events].reverse().find((e) => ['resumed', 'phase', 'agent_run', 'agent_write', 'schedule', 'summary', 'end', 'egress', 'paused', 'forked'].includes(e.kind));
+    now.hidden = false;
+    now.textContent = !last ? 'Starting' : last.kind === 'agent_run' ? `Agent ran: ${last.command.slice(0, 120)}` : last.kind === 'agent_write' ? `Agent wrote ${last.path}` : last.kind === 'schedule' ? `Replayed: ${last.name} → ${last.ok ? 'right state' : 'WRONG state'}` : last.kind === 'forked' ? `Forked a copy for: ${last.name}` : last.text;
+    const log = document.getElementById('log'); log.scrollTop = log.scrollHeight;
+  }
+  if (run.diff) document.getElementById('diff').innerHTML = esc(run.diff).split('\n').map((l) =>
+    l.startsWith('+') && !l.startsWith('+++') ? `<span class="add">${l}</span>` : l.startsWith('-') && !l.startsWith('---') ? `<span class="del">${l}</span>` : l.startsWith('@@') ? `<span class="hunk">${l}</span>` : l).join('\n');
+  actions(run);
+  document.getElementById('foot').innerHTML = `Run ${esc(run.id)} · stack set up with Stripe Projects · code runs in CreateOS sandboxes · <a href="https://github.com/N-45div/Twice">source</a>`;
+}
+if (new URLSearchParams(location.search).has('live')) {
+  document.body.classList.add('live');
+  const wrap = document.querySelector('.wrap'), cols = document.createElement('div'), left = document.createElement('div'), right = document.createElement('div');
+  cols.className = 'cols'; cols.append(left, right);
+  const hs = wrap.querySelectorAll('h2');
+  left.append(document.getElementById('now'), document.getElementById('stats'), hs[0], document.getElementById('tabs'), document.getElementById('grid'));
+  right.append(hs[1], document.getElementById('log'));
+  wrap.insertBefore(cols, hs[2]);
+  const tick = () => fetch('/live.json', { cache: 'no-store' }).then((r) => r.json()).then((run) => run && render(run)).catch(() => {}).finally(() => setTimeout(tick, 600));
+  tick();
+} else {
+const RAW = 'https://raw.githubusercontent.com/N-45div/Twice/main/web/';
+const get = (f) => fetch(RAW + f, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => fetch(f).then((r) => r.json()));
+get('runs.json').catch(() => [{ target: 'nextjs/saas-starter', file: 'run.json' }]).then((list) => {
+  const box = document.getElementById('targets');
+  const show = (i) => {
+    [...box.querySelectorAll('button')].forEach((b, j) => b.classList.toggle('on', j === i));
+    get(list[i].file).then(render).catch(() => { document.getElementById('grid').textContent = 'Could not load this run.'; });
+  };
+  box.innerHTML = '<span>Apps tested:</span>' + list.map((t) => `<button>${esc(t.target)}</button>`).join('');
+  box.onclick = (e) => { const b = e.target.closest('button'); if (b) show([...box.querySelectorAll('button')].indexOf(b)); };
+  show(0);
+});
+}
+</script>
+</body>
+</html>
