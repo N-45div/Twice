@@ -130,12 +130,22 @@ function prText(run) {
 function actions(run) {
   const el = document.getElementById('actions');
   if (!run.diff) { el.innerHTML = ''; return; }
-  el.innerHTML = `<button id="dl">Download the fix (.patch)</button><button id="pr">Copy PR description</button><small id="msg"></small>`;
+  el.innerHTML = `<button id="dl">Download the fix (.patch)</button><button id="pr">Copy PR description</button><button id="pk">Download regression pack</button><small id="msg"></small>`;
   document.getElementById('dl').onclick = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([run.diff], { type: 'text/x-diff' }));
     a.download = `twice-${(run.target || 'fix').replace(/[^a-z0-9]+/gi, '-')}.patch`;
     a.click();
+  };
+  document.getElementById('pk').onclick = () => {
+    const spec = run.spec || {};
+    const pack = { target: run.target, webhook_path: spec.webhook_path, reset_sql: spec.reset_sql, state_sql: spec.state_sql,
+      events: spec.events, expected_after: spec.expected_after, schedules: (run.before || []).map((r) => ({ name: r.name, order: r.order })) };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
+    a.download = 'twice-pack.json';
+    a.click();
+    document.getElementById('msg').textContent = 'Replay it against your app: node tools/replay-pack.mjs twice-pack.json --url http://localhost:3000';
   };
   document.getElementById('pr').onclick = async () => {
     try { await navigator.clipboard.writeText(prText(run)); document.getElementById('msg').textContent = 'Copied.'; }
