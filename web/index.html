@@ -61,6 +61,14 @@
   body.live .grid { grid-template-columns: repeat(3, 1fr); }
   body.live .tile { padding: 10px 12px; }
   body.live .tile .why { display: none; }
+  .targets { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 0; }
+  .targets button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 99px; padding: 6px 14px; font: inherit; font-size: 14px; cursor: pointer; }
+  .targets button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .targets span { color: var(--muted); font-size: 13px; align-self: center; margin-right: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; }
+  .actions button { border: 1px solid var(--accent); background: transparent; color: var(--accent); border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .actions button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .actions small { color: var(--muted); align-self: center; }
   footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   a { color: var(--accent); }
   @media (max-width: 520px) { header h1 { font-size: 30px; } .grid { grid-template-columns: 1fr; } }
@@ -73,6 +81,7 @@
     <h1>A 200 isn't enough.</h1>
     <p>Twice is an agent that tests your Stripe webhook handler against the delivery orders Stripe's docs say will happen: duplicates, events out of order, late retries and dropped deliveries. It boots your real app and database in a CreateOS sandbox, replays signed events in every hostile order, checks what actually ended up in the database, then writes the fix and proves it.</p>
   </header>
+  <div class="targets" id="targets"></div>
   <div class="now" id="now" hidden></div>
   <div class="stats" id="stats"></div>
   <h2>Every delivery order it tried</h2>
@@ -81,6 +90,7 @@
   <h2>What the agent did</h2>
   <div class="log" id="log"></div>
   <h2 class="diffhead">The fix it wrote</h2>
+  <div class="actions diffhead" id="actions"></div>
   <pre class="diff mono" id="diff">No fix needed.</pre>
   <footer id="foot"></footer>
 </div>
@@ -94,6 +104,43 @@ function tiles(list) {
       `<ul class="diffs">${r.diffs.map((d) => `<li><span class="mono">${esc(d.column)}</span>: ended <b>${esc(JSON.stringify(d.actual))}</b>, should be <b>${esc(JSON.stringify(d.expected))}</b></li>`).join('')}</ul>`;
     return `<div class="tile ${r.ok ? 'pass' : 'fail'}"><h3>${esc(r.name)}<span class="pill">${r.ok ? 'OK' : 'BROKEN'}</span></h3><p class="why">${esc(r.why || '')}</p><div class="seq">${seq}</div>${diffs}</div>`;
   }).join('');
+}
+function prText(run) {
+  const before = run.before || [], after = run.after || [];
+  const broken = before.filter((r) => !r.ok);
+  const fix = [...run.events].reverse().find((e) => e.kind === 'agent_done')?.text || '';
+  const lines = [
+    `## Make Stripe webhook handling safe against duplicate, late and out-of-order events`,
+    ``,
+    `Stripe does not guarantee event order and can deliver the same event more than once. Twice replayed signed Stripe events against this app in ${before.length} delivery orders; ${broken.length} left the database in the wrong state${before.every((r) => (r.deliveries || []).every((d) => d.status === 200)) ? ' while every request returned HTTP 200' : ''}.`,
+    ``,
+    `### Orders that broke`,
+    ...broken.map((r) => `- **${r.name}** (${r.deliveries.map((d) => d.type.replace('customer.subscription.', '')).join(' → ')}): ${r.diffs.map((d) => `\`${d.column}\` ended ${JSON.stringify(d.actual)}, should be ${JSON.stringify(d.expected)}`).join('; ')}`),
+    ``,
+    `### The fix`,
+    fix,
+    ``,
+    `### Verification`,
+    after.length ? `After this change, ${after.filter((r) => !r.ok).length} of ${after.length} delivery orders are wrong (every order re-run from a clean database).` : `Not re-run yet.`,
+    ``,
+    `Found and fixed by [Twice](https://github.com/N-45div/Twice).`,
+  ];
+  return lines.join(String.fromCharCode(10));
+}
+function actions(run) {
+  const el = document.getElementById('actions');
+  if (!run.diff) { el.innerHTML = ''; return; }
+  el.innerHTML = `<button id="dl">Download the fix (.patch)</button><button id="pr">Copy PR description</button><small id="msg"></small>`;
+  document.getElementById('dl').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([run.diff], { type: 'text/x-diff' }));
+    a.download = `twice-${(run.target || 'fix').replace(/[^a-z0-9]+/gi, '-')}.patch`;
+    a.click();
+  };
+  document.getElementById('pr').onclick = async () => {
+    try { await navigator.clipboard.writeText(prText(run)); document.getElementById('msg').textContent = 'Copied.'; }
+    catch { document.getElementById('msg').textContent = 'Copy failed; select the text below instead.'; }
+  };
 }
 function render(run) {
   const before = run.before || [], after = run.after || [];
@@ -127,6 +174,7 @@ function render(run) {
   }
   if (run.diff) document.getElementById('diff').innerHTML = esc(run.diff).split('\n').map((l) =>
     l.startsWith('+') && !l.startsWith('+++') ? `<span class="add">${l}</span>` : l.startsWith('-') && !l.startsWith('---') ? `<span class="del">${l}</span>` : l.startsWith('@@') ? `<span class="hunk">${l}</span>` : l).join('\n');
+  actions(run);
   document.getElementById('foot').innerHTML = `Run ${esc(run.id)} · stack set up with Stripe Projects · code runs in CreateOS sandboxes · <a href="https://github.com/N-45div/Twice">source</a>`;
 }
 if (new URLSearchParams(location.search).has('live')) {
@@ -140,11 +188,18 @@ if (new URLSearchParams(location.search).has('live')) {
   const tick = () => fetch('/live.json', { cache: 'no-store' }).then((r) => r.json()).then((run) => run && render(run)).catch(() => {}).finally(() => setTimeout(tick, 600));
   tick();
 } else {
-const LIVE = 'https://raw.githubusercontent.com/N-45div/Twice/main/web/run.json';
-fetch(LIVE, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject()))
-  .catch(() => fetch('run.json').then((r) => r.json()))
-  .then(render)
-  .catch(() => { document.getElementById('grid').textContent = 'No run recorded yet.'; });
+const RAW = 'https://raw.githubusercontent.com/N-45div/Twice/main/web/';
+const get = (f) => fetch(RAW + f, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject())).catch(() => fetch(f).then((r) => r.json()));
+get('runs.json').catch(() => [{ target: 'nextjs/saas-starter', file: 'run.json' }]).then((list) => {
+  const box = document.getElementById('targets');
+  const show = (i) => {
+    [...box.querySelectorAll('button')].forEach((b, j) => b.classList.toggle('on', j === i));
+    get(list[i].file).then(render).catch(() => { document.getElementById('grid').textContent = 'Could not load this run.'; });
+  };
+  box.innerHTML = '<span>Apps tested:</span>' + list.map((t) => `<button>${esc(t.target)}</button>`).join('');
+  box.onclick = (e) => { const b = e.target.closest('button'); if (b) show([...box.querySelectorAll('button')].indexOf(b)); };
+  show(0);
+});
 }
 </script>
 </body>
