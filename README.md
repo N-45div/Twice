@@ -14,7 +14,12 @@ I pointed Twice at [nextjs/saas-starter](https://github.com/nextjs/saas-starter)
 - The agent then changed the app: it records each event's `created` time on the team and ignores anything older than the last event it applied. After the fix, **0 of 12** orders were wrong.
 - The whole loop (resume the booted app, read the code, write the test, run 12 orders, fix, run 12 again) takes under three minutes. In the latest recorded run it took 163 seconds, and the booted app resumed from its paused snapshot in 4.6 s.
 
-The recorded run, including every command the agent ran and the diff it wrote, is in [`web/run.json`](web/run.json) and on the viewer page.
+I then pointed the same agent at a second popular starter, [boxyhq/saas-starter-kit](https://github.com/boxyhq/saas-starter-kit) (Next.js + Prisma + Postgres), with no code changes to Twice beyond the app's folder, port and database:
+
+- **5 of 12 delivery orders left a cancelled subscription in the database as `active: true`.** The handler hard-deletes the subscription on `customer.subscription.deleted`, so a late `created` or `updated` event re-creates it with `active` hard-coded to true.
+- The agent changed the handler and the Prisma schema; after the fix, **0 of 12** orders were wrong. That run took 247 seconds.
+
+The recorded run, including every command the agent ran and the diff it wrote, is in [`web/run.json`](web/run.json) and [`web/run-boxyhq.json`](web/run-boxyhq.json) and on the viewer page.
 
 A side note from the same run: to read the plan name, the handler casts `plan.product` to an expanded Product object, but stores the same field as the product id string. With the expanded shape the agent used, the starter stores `[object Object]` as the product id.
 
@@ -73,6 +78,6 @@ Each run writes `runs/<id>.json` and `runs/latest.json`; copy one to `web/run.js
 
 - The events are built by the agent from the handler's own field reads and signed locally. They are not recorded from a live Stripe account.
 - Twice judges one table row per customer. It does not yet check emails, credits or other side effects.
-- The target needs a boot script. nextjs/saas-starter is the only one included so far.
+- The target needs a boot script. Two are included so far: nextjs/saas-starter and boxyhq/saas-starter-kit.
 
 Built during the CreateOS × Stripe Projects hackathon (Oct 17, 2026), in coordination with an AI coding assistant, Claude Code.
