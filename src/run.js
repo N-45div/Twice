@@ -12,6 +12,7 @@ const arg = (name, fallback) => {
 };
 const FORK = process.argv.includes('--fork');
 const WAVE = Number(arg('wave', 4));
+const LOCKED = ['127.0.0.1/32'];
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 const record = { id: runId, target: arg('target', 'nextjs/saas-starter'), mode: FORK ? 'fork' : 'sequential', events: [] };
 fs.mkdirSync('runs', { recursive: true });
@@ -91,7 +92,7 @@ async function explore(base, spec, round) {
     const done = await Promise.all(
       wave.map(async (s) => {
         const f0 = Date.now();
-        const copy = await base.fork({});
+        const copy = await base.fork({ egress: LOCKED });
         log({ kind: 'forked', name: s.name, sandbox: copy.id, ms: Date.now() - f0 });
         try {
           await sh(copy, 'true');
@@ -114,6 +115,11 @@ async function main() {
   const base = await connect(arg('sandbox'));
   log({ kind: 'start', text: `Twice on ${record.target} in ${record.mode} mode`, sandbox: base.id });
   await writeFile(base, '/twice/replay.mjs', fs.readFileSync('sandbox/replay.mjs', 'utf8'));
+  // The app never needs the internet for this. Lock its network to itself so
+  // nothing it runs, and nothing the agent writes, can reach Stripe or anywhere else.
+  await base.setEgress(LOCKED);
+  const probe = await sh(base, 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://api.stripe.com || echo blocked');
+  log({ kind: 'egress', text: `Network locked to 127.0.0.1; api.stripe.com from inside the sandbox: ${probe.stdout.trim() || 'blocked'}` });
   const agent = new Agent(base, SYSTEM, log);
 
   // 1. The agent reads the handler and writes the test it will be held to.
@@ -168,7 +174,8 @@ async function main() {
     log({ kind: 'summary', text: `${broken.length} of ${results.length} delivery orders still wrong after the fix`, broken: broken.length, total: results.length, round });
   }
   record.after = results;
-  record.diff = (await sh(base, 'cd /app && git diff')).stdout;
+  record.diff = (await sh(base, "cd /app && git diff -- . ':!tsconfig.json' ':!next-env.d.ts'")).stdout;
+  await base.setEgress(null);
   record.files = handlerBefore.stdout;
   log({ kind: 'end', text: broken.length ? 'Some orders still fail' : 'Every delivery order now ends in the right state' });
   save();
