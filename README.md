@@ -10,7 +10,7 @@ I pointed Twice at [nextjs/saas-starter](https://github.com/nextjs/saas-starter)
 
 - **5 of 12 delivery orders left the database wrong, and every single request returned HTTP 200.** When a late `customer.subscription.updated` arrives after `customer.subscription.deleted`, the handler writes whatever status the late event carries. A team that cancelled ends up back on the "Basic" plan as `trialing` or `active`.
 - The agent then changed the app: it records each event's `created` time on the team and ignores anything older than the last event it applied. After the fix, **0 of 12** orders were wrong.
-- The whole loop (read the code, write the test, run 12 orders, fix, run 12 again) took about two minutes.
+- The whole loop (resume the booted app, read the code, write the test, run 12 orders, fix, run 12 again) takes under three minutes. In the latest recorded run it took 163 seconds, and the booted app resumed from its paused snapshot in 4.6 s.
 
 The recorded run, including every command the agent ran and the diff it wrote, is in [`web/run.json`](web/run.json) and on the viewer page.
 
@@ -23,6 +23,8 @@ A side note from the same run: to read the plan name, the handler casts `plan.pr
 3. **The agent writes the test it will be held to.** A tool-using agent ([`src/agent.js`](src/agent.js)) works inside the sandbox with `run` and `write_file` tools. It reads the webhook route and the code it calls, inspects the schema with `psql`, and writes `.twice/spec.json`: a seed for one test customer, a query for the state that matters, a realistic subscription lifecycle as Stripe events, and the state expected after each one. Twice replays the events once, in order; if the app disagrees with the spec, the agent is told exactly how and fixes its own spec.
 4. **Explore.** [`src/schedules.js`](src/schedules.js) turns the lifecycle into hostile orders: every event twice, fully reversed, each adjacent pair swapped, a late retry of each event, each event dropped. [`sandbox/replay.mjs`](sandbox/replay.mjs) runs inside the sandbox: it resets the database, posts the signed events in that order, and reads the state back. The rule: the database must match the newest event it was sent, whatever order the deliveries arrived in.
 5. **Fix.** The agent gets the failing orders, edits the app's own code, adds a column through Drizzle and `psql` when it needs one, re-runs the failing replays itself, and Twice then re-runs every order from scratch.
+
+Booting the app is the slow part (install, migrate, compile), so it happens once. Between runs the booted sandbox stays paused with its memory, and Twice resumes it in a few seconds with `next dev` and Postgres still running; `--pause-after` pauses it again when the run ends.
 
 With `--fork`, Twice pauses the booted app once and forks a fresh copy (memory and disk) for each delivery order, so every order starts from exactly the same running state. The run above used sequential mode, because my CreateOS plan allows one sandbox at a time.
 
@@ -45,7 +47,10 @@ createos sandbox push twice-base targets/nextjs-saas-starter/boot.sh /root/boot.
 createos sandbox exec twice-base -- bash /root/boot.sh
 
 # run Twice against it (add --fork on a plan that allows several sandboxes)
-node --env-file=.env src/run.js --sandbox <sandbox-id>
+node --env-file=.env src/run.js --sandbox <sandbox-id> --pause-after
+
+# watch it live
+node src/live.mjs   # then open http://localhost:8088/?live
 ```
 
 Each run writes `runs/<id>.json` and `runs/latest.json`; copy one to `web/run.json` to show it on the viewer.
