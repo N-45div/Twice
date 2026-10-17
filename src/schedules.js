@@ -35,7 +35,12 @@ export function expected(spec, order) {
 }
 
 export function verdict(expectedRow, actualRow) {
-  if (!actualRow) return { ok: false, diffs: [{ column: '(row)', expected: 'a row', actual: 'missing' }] };
+  // null means the row should not exist (for example, deleted on cancellation).
+  if (expectedRow === null) {
+    return actualRow ? { ok: false, diffs: [{ column: '(row)', expected: 'no row', actual: actualRow }] } : { ok: true, diffs: [] };
+  }
+  if (expectedRow === undefined) return { ok: false, diffs: [{ column: '(spec)', expected: 'an expected_after entry', actual: 'missing' }] };
+  if (!actualRow) return { ok: false, diffs: [{ column: '(row)', expected: expectedRow, actual: 'missing' }] };
   const diffs = [];
   for (const [column, want] of Object.entries(expectedRow)) {
     const got = actualRow[column] ?? null;

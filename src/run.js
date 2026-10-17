@@ -46,7 +46,7 @@ The file must be JSON with exactly these keys:
 - "reset_sql": SQL that puts the database into a known starting state for one test customer with stripe customer id "cus_twice" (delete then insert, so it is safe to run before every replay; fill every NOT NULL column).
 - "state_sql": one SELECT returning exactly one row with the columns these events change for that customer.
 - "events": 3 or 4 complete Stripe event objects (id, object "event", type, created, data.object with every field the handler reads) for subscription "sub_twice", in true chronological order with increasing "created", walking a realistic life such as trialing, then active, then canceled. Only use event types the handler acts on.
-- "expected_after": an array with one object per event: the row state_sql must return after events 0..i were delivered once, in order. Use the exact column names state_sql returns and JSON null for empty values.
+- "expected_after": an array with one entry per event: the row state_sql must return after events 0..i were delivered once, in order. Use the exact column names state_sql returns and JSON null for empty values. If the app deletes the row at that point, the entry is null.
 Check your SQL runs against the database before you finish. Then call finish.`;
 
 async function replay(sandbox, spec, schedule, tag) {
@@ -145,6 +145,11 @@ async function main() {
       spec = JSON.parse(raw.stdout);
     } catch (e) {
       feedback = `${APP}/.twice/spec.json is not valid JSON (${e.message}). Fix it.`;
+      continue;
+    }
+    if (!Array.isArray(spec.events) || !Array.isArray(spec.expected_after) || spec.events.length !== spec.expected_after.length) {
+      feedback = `spec.json needs "events" and "expected_after" arrays of the same length (one expected row per event; use null when the row should not exist).`;
+      spec = null;
       continue;
     }
     const check = await replay(base, spec, { name: 'In order', order: spec.events.map((_, i) => i) }, 'baseline');
