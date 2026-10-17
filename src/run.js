@@ -114,12 +114,20 @@ async function explore(base, spec, round) {
 async function main() {
   const base = await connect(arg('sandbox'));
   log({ kind: 'start', text: `Twice on ${record.target} in ${record.mode} mode`, sandbox: base.id });
+  // Booting the app (install, migrate, compile) is slow, so it happens once.
+  // Between runs the booted sandbox sits paused, memory included, and resumes in seconds.
+  if (base.status === 'paused') {
+    const r0 = Date.now();
+    await base.resume();
+    await base.waitUntilRunning({ timeoutMs: 300_000 });
+    log({ kind: 'resumed', text: `Resumed the booted app from its paused snapshot in ${((Date.now() - r0) / 1000).toFixed(1)} s (next dev and Postgres still running)`, ms: Date.now() - r0 });
+  }
   await writeFile(base, '/twice/replay.mjs', fs.readFileSync('sandbox/replay.mjs', 'utf8'));
   // The app never needs the internet for this. Lock its network to itself so
   // nothing it runs, and nothing the agent writes, can reach Stripe or anywhere else.
   await base.setEgress(LOCKED);
-  const probe = await sh(base, 'curl -s -m 5 -o /dev/null -w "%{http_code}" https://api.stripe.com || echo blocked');
-  log({ kind: 'egress', text: `Network locked to 127.0.0.1; api.stripe.com from inside the sandbox: ${probe.stdout.trim() || 'blocked'}` });
+  const probe = await sh(base, 'curl -s -m 5 -o /dev/null https://api.stripe.com && echo reachable || echo blocked');
+  log({ kind: 'egress', text: `Network locked to 127.0.0.1. Reaching api.stripe.com from inside the sandbox: ${probe.stdout.trim()}` });
   const agent = new Agent(base, SYSTEM, log);
 
   // 1. The agent reads the handler and writes the test it will be held to.
@@ -179,6 +187,13 @@ async function main() {
   record.files = handlerBefore.stdout;
   log({ kind: 'end', text: broken.length ? 'Some orders still fail' : 'Every delivery order now ends in the right state' });
   save();
+  if (process.argv.includes('--pause-after')) {
+    const p0 = Date.now();
+    await base.pause();
+    await base.waitUntilPaused({ timeoutMs: 600_000 });
+    log({ kind: 'paused', text: `Paused the sandbox again in ${((Date.now() - p0) / 1000).toFixed(1)} s, so it stops using CPU until the next run` });
+    save();
+  }
 }
 
 main().catch((err) => {
