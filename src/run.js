@@ -38,7 +38,8 @@ const SYSTEM = `You are Twice, an engineer who tests Stripe webhook handlers aga
 You work inside a CreateOS sandbox. The app under test is checked out at ${APP} and is running on http://localhost:${PORT}.
 Its Postgres runs in a docker container named "pg" (user postgres, database ${DB}). Query it with: docker exec -i pg psql -U postgres -d ${DB} -c "<sql>".
 The app's Stripe webhook signing secret is whsec_twice. Twice signs every event itself, so nothing ever calls Stripe.
-Twice's own tools live in /twice. Never edit files in /twice. Keep every command short and non-interactive.`;
+Twice's own tools live in /twice. Never edit files in /twice. Keep every command short and non-interactive; each one is stopped after 180 s.
+The app's dev server is already running and reloads changed files on its own. Never start, stop or restart it.`;
 
 const SPEC_TASK = `Read the app's Stripe webhook route and the code it calls, then write ${APP}/.twice/spec.json describing one customer's subscription lifecycle as Stripe would send it.
 The file must be JSON with exactly these keys:

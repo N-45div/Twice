@@ -58,7 +58,7 @@ export class Agent {
         let result;
         if (call.function.name === 'run') {
           this.log({ kind: 'agent_run', command: args.command });
-          const r = await sh(this.sandbox, `cd ${this.cwd} && ${args.command}`);
+          const r = await sh(this.sandbox, `cd ${this.cwd} && timeout 180 bash -lc ${JSON.stringify(args.command)} < /dev/null`);
           this.log({ kind: 'agent_result', code: r.code, stdout: r.stdout.slice(-1500), stderr: r.stderr.slice(-800) });
           result = JSON.stringify(r);
         } else if (call.function.name === 'write_file') {
