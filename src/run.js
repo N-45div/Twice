@@ -148,8 +148,8 @@ async function main() {
       feedback = `${APP}/.twice/spec.json is not valid JSON (${e.message}). Fix it.`;
       continue;
     }
-    if (!Array.isArray(spec.events) || !Array.isArray(spec.expected_after) || spec.events.length !== spec.expected_after.length) {
-      feedback = `spec.json needs "events" and "expected_after" arrays of the same length (one expected row per event; use null when the row should not exist).`;
+    if (!Array.isArray(spec.events) || spec.events.length < 2 || !Array.isArray(spec.expected_after) || spec.events.length !== spec.expected_after.length) {
+      feedback = `spec.json needs at least 2 "events" and an "expected_after" array of the same length (one expected row per event; use null when the row should not exist).`;
       spec = null;
       continue;
     }
