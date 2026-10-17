@@ -30,6 +30,18 @@ Booting the app is the slow part (install, migrate, compile), so it happens once
 
 With `--fork`, Twice pauses the booted app once and forks a fresh copy (memory and disk) for each delivery order, so every order starts from exactly the same running state. The run above used sequential mode, because my CreateOS plan allows one sandbox at a time.
 
+## Take the result with you
+
+The run viewer has three buttons under the fix:
+
+- **Download the fix (.patch)**: the agent's change as a `git apply`-able patch.
+- **Copy PR description**: a ready pull-request body listing every order that broke, what the database ended up with, the fix, and the verification run.
+- **Download regression pack**: the events, the hostile delivery orders and the expected end states as `twice-pack.json`. Replay it against your own running app with [`tools/replay-pack.mjs`](tools/replay-pack.mjs), which has no dependencies and exits 1 if any order leaves the database wrong, so the bug can't come back:
+
+```bash
+DATABASE_URL=postgres://localhost/dev STRIPE_WEBHOOK_SECRET=whsec_...   node tools/replay-pack.mjs twice-pack.json --url http://localhost:3000
+```
+
 ## Stack
 
 - **Stripe Projects** set up the stack from an empty directory: `stripe projects init`, then `stripe projects add createos/free` and `createos/project`, which created the CreateOS account and wrote its credentials to `.env`.
