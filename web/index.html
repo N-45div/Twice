@@ -97,11 +97,20 @@
 <script>
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const short = (t) => t.replace('customer.subscription.', 'sub.').replace('invoice.', 'inv.');
+function diffLine(d) {
+  if (d.column === '(row)' && d.expected === 'no row') {
+    const a = d.actual || {};
+    const keyCols = ['active', 'status', 'subscription_status', 'subscriptionStatus'].filter((k) => k in a);
+    return `<li>The row should have been deleted, but it is still there${keyCols.length ? ` with <b>${keyCols.map((k) => `${esc(k)} = ${esc(JSON.stringify(a[k]))}`).join(', ')}</b>` : ''}</li>`;
+  }
+  if (d.column === '(row)') return `<li>The row is <b>missing</b></li>`;
+  return `<li><span class="mono">${esc(d.column)}</span>: ended <b>${esc(JSON.stringify(d.actual))}</b>, should be <b>${esc(JSON.stringify(d.expected))}</b></li>`;
+}
 function tiles(list) {
   return list.map((r) => {
     const seq = (r.deliveries || []).map((d) => `<code>${esc(short(d.type))} · ${esc(d.status)}</code>`).join('');
     const diffs = r.ok ? `<p class="why">Ended in the right state.</p>` :
-      `<ul class="diffs">${r.diffs.map((d) => `<li><span class="mono">${esc(d.column)}</span>: ended <b>${esc(JSON.stringify(d.actual))}</b>, should be <b>${esc(JSON.stringify(d.expected))}</b></li>`).join('')}</ul>`;
+      `<ul class="diffs">${r.diffs.map(diffLine).join('')}</ul>`;
     return `<div class="tile ${r.ok ? 'pass' : 'fail'}"><h3>${esc(r.name)}<span class="pill">${r.ok ? 'OK' : 'BROKEN'}</span></h3><p class="why">${esc(r.why || '')}</p><div class="seq">${seq}</div>${diffs}</div>`;
   }).join('');
 }
