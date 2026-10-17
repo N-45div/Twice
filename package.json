@@ -1,0 +1,17 @@
+{
+  "name": "twice",
+  "version": "1.0.0",
+  "description": "Finds the Stripe event orders that break your app, then fixes the app.",
+  "main": "index.js",
+  "scripts": {
+    "run": "node --env-file=.env src/run.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@nodeops-createos/sandbox": "^0.8.2",
+    "openai": "^7.36.0"
+  }
+}
