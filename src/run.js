@@ -13,6 +13,9 @@ const arg = (name, fallback) => {
 const FORK = process.argv.includes('--fork');
 const WAVE = Number(arg('wave', 4));
 const LOCKED = ['127.0.0.1/32'];
+const APP = arg('app', '/app');
+const PORT = arg('port', '3000');
+const DB = arg('db', 'app');
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 const record = { id: runId, target: arg('target', 'nextjs/saas-starter'), mode: FORK ? 'fork' : 'sequential', events: [] };
 fs.mkdirSync('runs', { recursive: true });
@@ -32,12 +35,12 @@ function save() {
 }
 
 const SYSTEM = `You are Twice, an engineer who tests Stripe webhook handlers against the delivery orders Stripe's docs say will happen: duplicates, events out of order, late retries and dropped deliveries.
-You work inside a CreateOS sandbox. The app under test is checked out at /app and is running with "next dev" on http://localhost:3000.
-Its Postgres runs in a docker container named "pg" (user postgres, database app). Query it with: docker exec -i pg psql -U postgres -d app -c "<sql>".
+You work inside a CreateOS sandbox. The app under test is checked out at ${APP} and is running on http://localhost:${PORT}.
+Its Postgres runs in a docker container named "pg" (user postgres, database ${DB}). Query it with: docker exec -i pg psql -U postgres -d ${DB} -c "<sql>".
 The app's Stripe webhook signing secret is whsec_twice. Twice signs every event itself, so nothing ever calls Stripe.
 Twice's own tools live in /twice. Never edit files in /twice. Keep every command short and non-interactive.`;
 
-const SPEC_TASK = `Read the app's Stripe webhook route and the code it calls, then write /app/.twice/spec.json describing one customer's subscription lifecycle as Stripe would send it.
+const SPEC_TASK = `Read the app's Stripe webhook route and the code it calls, then write ${APP}/.twice/spec.json describing one customer's subscription lifecycle as Stripe would send it.
 The file must be JSON with exactly these keys:
 - "webhook_path": the route path that receives Stripe events.
 - "reset_sql": SQL that puts the database into a known starting state for one test customer with stripe customer id "cus_twice" (delete then insert, so it is safe to run before every replay; fill every NOT NULL column).
@@ -48,7 +51,8 @@ Check your SQL runs against the database before you finish. Then call finish.`;
 
 async function replay(sandbox, spec, schedule, tag) {
   const plan = {
-    url: `http://localhost:3000${spec.webhook_path}`,
+    url: `http://localhost:${PORT}${spec.webhook_path}`,
+    db: { container: 'pg', user: 'postgres', name: DB },
     secret: 'whsec_twice',
     reset_sql: spec.reset_sql,
     state_sql: spec.state_sql,
@@ -128,7 +132,7 @@ async function main() {
   await base.setEgress(LOCKED);
   const probe = await sh(base, 'curl -s -m 5 -o /dev/null https://api.stripe.com && echo reachable || echo blocked');
   log({ kind: 'egress', text: `Network locked to 127.0.0.1. Reaching api.stripe.com from inside the sandbox: ${probe.stdout.trim()}` });
-  const agent = new Agent(base, SYSTEM, log);
+  const agent = new Agent(base, SYSTEM, log, APP);
 
   // 1. The agent reads the handler and writes the test it will be held to.
   let spec;
@@ -136,11 +140,11 @@ async function main() {
   for (let attempt = 1; attempt <= 3; attempt++) {
     log({ kind: 'phase', text: attempt === 1 ? 'Reading the webhook handler' : `Fixing its own spec (attempt ${attempt})` });
     await agent.task(feedback);
-    const raw = await sh(base, 'cat /app/.twice/spec.json');
+    const raw = await sh(base, `cat ${APP}/.twice/spec.json`);
     try {
       spec = JSON.parse(raw.stdout);
     } catch (e) {
-      feedback = `/app/.twice/spec.json is not valid JSON (${e.message}). Fix it.`;
+      feedback = `${APP}/.twice/spec.json is not valid JSON (${e.message}). Fix it.`;
       continue;
     }
     const check = await replay(base, spec, { name: 'In order', order: spec.events.map((_, i) => i) }, 'baseline');
@@ -161,7 +165,7 @@ async function main() {
   log({ kind: 'summary', text: `${broken.length} of ${results.length} delivery orders left the app in the wrong state`, broken: broken.length, total: results.length });
 
   // 3. The agent fixes the app until every order passes.
-  const handlerBefore = await sh(base, 'cd /app && git diff --stat; git status --short');
+  const handlerBefore = await sh(base, `cd ${APP} && git diff --stat; git status --short`);
   for (let round = 2; broken.length && round <= 4; round++) {
     log({ kind: 'phase', text: `Writing a fix (round ${round - 1})` });
     const failures = broken.map((b) => ({
@@ -173,8 +177,8 @@ async function main() {
     }));
     await agent.task(
       `These delivery orders left the app in the wrong state:\n${JSON.stringify(failures, null, 2)}\n` +
-        `Change the app's own code (not /app/.twice and not /twice) so that the stored state always reflects the newest event for a subscription (compare event.created), and an older event can never bring back a cancelled subscription. ` +
-        `Keep the change small and in the style of the codebase. If you need a new column, add it to the Drizzle schema AND create it in the database with psql. next dev reloads files on its own. ` +
+        `Change the app's own code (not ${APP}/.twice and not /twice) so that the stored state always reflects the newest event for a subscription (compare event.created), and an older event can never bring back a cancelled subscription. ` +
+        `Keep the change small and in the style of the codebase. If you need a new column, add it to the app's schema (Drizzle or Prisma) AND create it in the database with psql. The dev server reloads files on its own. ` +
         `Re-run the replay commands above yourself until every one of them ends in the right state, then call finish.`
     );
     results = await explore(base, spec, round);
@@ -182,7 +186,7 @@ async function main() {
     log({ kind: 'summary', text: `${broken.length} of ${results.length} delivery orders still wrong after the fix`, broken: broken.length, total: results.length, round });
   }
   record.after = results;
-  record.diff = (await sh(base, "cd /app && git diff -- . ':!tsconfig.json' ':!next-env.d.ts'")).stdout;
+  record.diff = (await sh(base, `cd ${APP} && git diff -- . ':!tsconfig.json' ':!next-env.d.ts'`)).stdout;
   await base.setEgress(null);
   record.files = handlerBefore.stdout;
   log({ kind: 'end', text: broken.length ? 'Some orders still fail' : 'Every delivery order now ends in the right state' });

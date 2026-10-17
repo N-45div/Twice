@@ -11,7 +11,7 @@ const tools = [
     type: 'function',
     function: {
       name: 'run',
-      description: 'Run a bash command inside the sandbox (working directory /app). Returns stdout, stderr and the exit code.',
+      description: 'Run a bash command inside the sandbox (working directory: the app). Returns stdout, stderr and the exit code.',
       parameters: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] },
     },
   },
@@ -38,7 +38,8 @@ const tools = [
 ];
 
 export class Agent {
-  constructor(sandbox, system, log) {
+  constructor(sandbox, system, log, cwd = '/app') {
+    this.cwd = cwd;
     this.sandbox = sandbox;
     this.log = log;
     this.messages = [{ role: 'system', content: system }];
@@ -57,7 +58,7 @@ export class Agent {
         let result;
         if (call.function.name === 'run') {
           this.log({ kind: 'agent_run', command: args.command });
-          const r = await sh(this.sandbox, `cd /app && ${args.command}`);
+          const r = await sh(this.sandbox, `cd ${this.cwd} && ${args.command}`);
           this.log({ kind: 'agent_result', code: r.code, stdout: r.stdout.slice(-1500), stderr: r.stderr.slice(-800) });
           result = JSON.stringify(r);
         } else if (call.function.name === 'write_file') {
