@@ -18,6 +18,7 @@ I then pointed the same agent at a second popular starter, [boxyhq/saas-starter-
 
 - **5 of 12 delivery orders left a cancelled subscription in the database as `active: true`.** The handler hard-deletes the subscription on `customer.subscription.deleted`, so a late `created` or `updated` event re-creates it with `active` hard-coded to true.
 - The agent changed the handler and the Prisma schema; after the fix, **0 of 12** orders were wrong. That run took 247 seconds.
+- Side finding: a duplicate `customer.subscription.created` makes the handler return HTTP 400 (primary-key error) on every delivery, so Stripe keeps retrying an event the app will never accept.
 
 The recorded run, including every command the agent ran and the diff it wrote, is in [`web/run.json`](web/run.json) and [`web/run-boxyhq.json`](web/run-boxyhq.json) and on the viewer page.
 
