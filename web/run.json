@@ -1,0 +1,3344 @@
+{
+  "id": "2026-10-17T19-55-14-068Z",
+  "target": "nextjs/saas-starter",
+  "mode": "sequential",
+  "events": [
+    {
+      "t": 1792266914809,
+      "kind": "start",
+      "text": "Twice on nextjs/saas-starter in sequential mode",
+      "sandbox": "sb-01m55pma9dxsdfgbqphnk089s4"
+    },
+    {
+      "t": 1792266915024,
+      "kind": "phase",
+      "text": "Reading the webhook handler"
+    },
+    {
+      "t": 1792266918093,
+      "kind": "agent_run",
+      "command": "find app -maxdepth 4 -type f | sed 's#^#/#' | head -n 200"
+    },
+    {
+      "t": 1792266918305,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "/app/globals.css\n/app/layout.tsx\n/app/api/team/route.ts\n/app/api/stripe/webhook/route.ts\n/app/api/stripe/checkout/route.ts\n/app/api/user/route.ts\n/app/not-found.tsx\n/app/favicon.ico\n/app/(dashboard)/pricing/submit-button.tsx\n/app/(dashboard)/pricing/page.tsx\n/app/(dashboard)/terminal.tsx\n/app/(dashboard)/layout.tsx\n/app/(dashboard)/dashboard/layout.tsx\n/app/(dashboard)/dashboard/general/page.tsx\n/app/(dashboard)/dashboard/security/page.tsx\n/app/(dashboard)/dashboard/page.tsx\n/app/(dashboard)/dashboard/activity/page.tsx\n/app/(dashboard)/dashboard/activity/loading.tsx\n/app/(dashboard)/page.tsx\n/app/(login)/login.tsx\n/app/(login)/actions.ts\n/app/(login)/sign-up/page.tsx\n/app/(login)/sign-in/page.tsx\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266918305,
+      "kind": "agent_run",
+      "command": "pwd && ls -la && find . -maxdepth 3 -type f | head -n 200"
+    },
+    {
+      "t": 1792266918516,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "tsx\n./app/(dashboard)/page.tsx\n./app/(login)/login.tsx\n./app/(login)/actions.ts\n./.env\n./drizzle.config.ts\n./components/ui/button.tsx\n./components/ui/avatar.tsx\n./components/ui/card.tsx\n./components/ui/input.tsx\n./components/ui/dropdown-menu.tsx\n./components/ui/radio-group.tsx\n./components/ui/label.tsx\n./.gitignore\n./postcss.config.mjs\n./next.config.ts\n./package.json\n./middleware.ts\n./node_modules/.modules.yaml\n./node_modules/.pnpm/lock.yaml\n./node_modules/.pnpm-workspace-state-v1.json\n./node_modules/.bin/tsc\n./node_modules/.bin/bcrypt\n./node_modules/.bin/next\n./node_modules/.bin/tsserver\n./node_modules/.bin/drizzle-kit\n./node_modules/.bin/autoprefixer\n./components.json\n./.next/dev/lock\n./.next/dev/routes-manifest.json\n./.next/dev/fallback-build-manifest.json\n./.next/dev/prerender-manifest.json\n./.next/dev/build-manifest.json\n./.next/dev/package.json\n./.next/dev/trace\n./.git/packed-refs\n./.git/hooks/pre-rebase.sample\n./.git/hooks/sendemail-validate.sample\n./.git/hooks/pre-commit.sample\n./.git/hooks/pre-applypatch.sample\n./.git/hooks/pre-receive.sample\n./.git/hooks/pre-merge-commit.sample\n./.git/hooks/commit-msg.sample\n./.git/hooks/prepare-commit-msg.sample\n./.git/hooks/update.sample\n./.git/hooks/applypatch-msg.sample\n./.git/hooks/fsmonitor-watchman.sample\n./.git/hooks/pre-push.sample\n./.git/hooks/post-update.sample\n./.git/hooks/push-to-checkout.sample\n./.git/info/exclude\n./.git/config\n./.git/logs/HEAD\n./.git/shallow\n./.git/HEAD\n./.git/description\n./.git/index\n./tsconfig.json\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266920452,
+      "kind": "agent_run",
+      "command": "sed -n '1,220p' app/api/stripe/webhook/route.ts"
+    },
+    {
+      "t": 1792266920660,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "import Stripe from 'stripe';\nimport { handleSubscriptionChange, stripe } from '@/lib/payments/stripe';\nimport { NextRequest, NextResponse } from 'next/server';\n\nconst webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;\n\nexport async function POST(request: NextRequest) {\n  const payload = await request.text();\n  const signature = request.headers.get('stripe-signature') as string;\n\n  let event: Stripe.Event;\n\n  try {\n    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);\n  } catch (err) {\n    console.error('Webhook signature verification failed.', err);\n    return NextResponse.json(\n      { error: 'Webhook signature verification failed.' },\n      { status: 400 }\n    );\n  }\n\n  switch (event.type) {\n    case 'customer.subscription.updated':\n    case 'customer.subscription.deleted':\n      const subscription = event.data.object as Stripe.Subscription;\n      await handleSubscriptionChange(subscription);\n      break;\n    default:\n      console.log(`Unhandled event type ${event.type}`);\n  }\n\n  return NextResponse.json({ received: true });\n}\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266920660,
+      "kind": "agent_run",
+      "command": "sed -n '1,260p' lib/payments/stripe.ts"
+    },
+    {
+      "t": 1792266920868,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": ";\n    return;\n  }\n\n  if (status === 'active' || status === 'trialing') {\n    const plan = subscription.items.data[0]?.plan;\n    await updateTeamSubscription(team.id, {\n      stripeSubscriptionId: subscriptionId,\n      stripeProductId: plan?.product as string,\n      planName: (plan?.product as Stripe.Product).name,\n      subscriptionStatus: status\n    });\n  } else if (status === 'canceled' || status === 'unpaid') {\n    await updateTeamSubscription(team.id, {\n      stripeSubscriptionId: null,\n      stripeProductId: null,\n      planName: null,\n      subscriptionStatus: status\n    });\n  }\n}\n\nexport async function getStripePrices() {\n  const prices = await stripe.prices.list({\n    expand: ['data.product'],\n    active: true,\n    type: 'recurring'\n  });\n\n  return prices.data.map((price) => ({\n    id: price.id,\n    productId:\n      typeof price.product === 'string' ? price.product : price.product.id,\n    unitAmount: price.unit_amount,\n    currency: price.currency,\n    interval: price.recurring?.interval,\n    trialPeriodDays: price.recurring?.trial_period_days\n  }));\n}\n\nexport async function getStripeProducts() {\n  const products = await stripe.products.list({\n    active: true,\n    expand: ['data.default_price']\n  });\n\n  return products.data.map((product) => ({\n    id: product.id,\n    name: product.name,\n    description: product.description,\n    defaultPriceId:\n      typeof product.default_price === 'string'\n        ? product.default_price\n        : product.default_price?.id\n  }));\n}\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266920869,
+      "kind": "agent_run",
+      "command": "sed -n '1,260p' lib/db/schema.ts"
+    },
+    {
+      "t": 1792266921087,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "one(users, {\n    fields: [teamMembers.userId],\n    references: [users.id],\n  }),\n  team: one(teams, {\n    fields: [teamMembers.teamId],\n    references: [teams.id],\n  }),\n}));\n\nexport const activityLogsRelations = relations(activityLogs, ({ one }) => ({\n  team: one(teams, {\n    fields: [activityLogs.teamId],\n    references: [teams.id],\n  }),\n  user: one(users, {\n    fields: [activityLogs.userId],\n    references: [users.id],\n  }),\n}));\n\nexport type User = typeof users.$inferSelect;\nexport type NewUser = typeof users.$inferInsert;\nexport type Team = typeof teams.$inferSelect;\nexport type NewTeam = typeof teams.$inferInsert;\nexport type TeamMember = typeof teamMembers.$inferSelect;\nexport type NewTeamMember = typeof teamMembers.$inferInsert;\nexport type ActivityLog = typeof activityLogs.$inferSelect;\nexport type NewActivityLog = typeof activityLogs.$inferInsert;\nexport type Invitation = typeof invitations.$inferSelect;\nexport type NewInvitation = typeof invitations.$inferInsert;\nexport type TeamDataWithMembers = Team & {\n  teamMembers: (TeamMember & {\n    user: Pick<User, 'id' | 'name' | 'email'>;\n  })[];\n};\n\nexport enum ActivityType {\n  SIGN_UP = 'SIGN_UP',\n  SIGN_IN = 'SIGN_IN',\n  SIGN_OUT = 'SIGN_OUT',\n  UPDATE_PASSWORD = 'UPDATE_PASSWORD',\n  DELETE_ACCOUNT = 'DELETE_ACCOUNT',\n  UPDATE_ACCOUNT = 'UPDATE_ACCOUNT',\n  CREATE_TEAM = 'CREATE_TEAM',\n  REMOVE_TEAM_MEMBER = 'REMOVE_TEAM_MEMBER',\n  INVITE_TEAM_MEMBER = 'INVITE_TEAM_MEMBER',\n  ACCEPT_INVITATION = 'ACCEPT_INVITATION',\n}\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266921087,
+      "kind": "agent_run",
+      "command": "sed -n '1,260p' lib/db/queries.ts"
+    },
+    {
+      "t": 1792266921296,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "      ...subscriptionData,\n      updatedAt: new Date()\n    })\n    .where(eq(teams.id, teamId));\n}\n\nexport async function getUserWithTeam(userId: number) {\n  const result = await db\n    .select({\n      user: users,\n      teamId: teamMembers.teamId\n    })\n    .from(users)\n    .leftJoin(teamMembers, eq(users.id, teamMembers.userId))\n    .where(eq(users.id, userId))\n    .limit(1);\n\n  return result[0];\n}\n\nexport async function getActivityLogs() {\n  const user = await getUser();\n  if (!user) {\n    throw new Error('User not authenticated');\n  }\n\n  return await db\n    .select({\n      id: activityLogs.id,\n      action: activityLogs.action,\n      timestamp: activityLogs.timestamp,\n      ipAddress: activityLogs.ipAddress,\n      userName: users.name\n    })\n    .from(activityLogs)\n    .leftJoin(users, eq(activityLogs.userId, users.id))\n    .where(eq(activityLogs.userId, user.id))\n    .orderBy(desc(activityLogs.timestamp))\n    .limit(10);\n}\n\nexport async function getTeamForUser() {\n  const user = await getUser();\n  if (!user) {\n    return null;\n  }\n\n  const result = await db.query.teamMembers.findFirst({\n    where: eq(teamMembers.userId, user.id),\n    with: {\n      team: {\n        with: {\n          teamMembers: {\n            with: {\n              user: {\n                columns: {\n                  id: true,\n                  name: true,\n                  email: true\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  });\n\n  return result?.team || null;\n}\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266922842,
+      "kind": "agent_run",
+      "command": "docker exec -i pg psql -U postgres -d app -c \"\\d teams\""
+    },
+    {
+      "t": 1792266923167,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "e |              Default              \n------------------------+-----------------------------+-----------+----------+-----------------------------------\n id                     | integer                     |           | not null | nextval('teams_id_seq'::regclass)\n name                   | character varying(100)      |           | not null | \n created_at             | timestamp without time zone |           | not null | now()\n updated_at             | timestamp without time zone |           | not null | now()\n stripe_customer_id     | text                        |           |          | \n stripe_subscription_id | text                        |           |          | \n stripe_product_id      | text                        |           |          | \n plan_name              | character varying(50)       |           |          | \n subscription_status    | character varying(20)       |           |          | \nIndexes:\n    \"teams_pkey\" PRIMARY KEY, btree (id)\n    \"teams_stripe_customer_id_unique\" UNIQUE CONSTRAINT, btree (stripe_customer_id)\n    \"teams_stripe_subscription_id_unique\" UNIQUE CONSTRAINT, btree (stripe_subscription_id)\nReferenced by:\n    TABLE \"activity_logs\" CONSTRAINT \"activity_logs_team_id_teams_id_fk\" FOREIGN KEY (team_id) REFERENCES teams(id)\n    TABLE \"invitations\" CONSTRAINT \"invitations_team_id_teams_id_fk\" FOREIGN KEY (team_id) REFERENCES teams(id)\n    TABLE \"team_members\" CONSTRAINT \"team_members_team_id_teams_id_fk\" FOREIGN KEY (team_id) REFERENCES teams(id)\n\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266923167,
+      "kind": "agent_run",
+      "command": "grep -R \"create table.*teams\\|ALTER TABLE .*teams\\|INSERT INTO teams\" -n . | head -n 50"
+    },
+    {
+      "t": 1792266925713,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "./lib/db/migrations/0000_soft_the_anarchist.sql:55: ALTER TABLE \"activity_logs\" ADD CONSTRAINT \"activity_logs_team_id_teams_id_fk\" FOREIGN KEY (\"team_id\") REFERENCES \"public\".\"teams\"(\"id\") ON DELETE no action ON UPDATE no action;\n./lib/db/migrations/0000_soft_the_anarchist.sql:67: ALTER TABLE \"invitations\" ADD CONSTRAINT \"invitations_team_id_teams_id_fk\" FOREIGN KEY (\"team_id\") REFERENCES \"public\".\"teams\"(\"id\") ON DELETE no action ON UPDATE no action;\n./lib/db/migrations/0000_soft_the_anarchist.sql:85: ALTER TABLE \"team_members\" ADD CONSTRAINT \"team_members_team_id_teams_id_fk\" FOREIGN KEY (\"team_id\") REFERENCES \"public\".\"teams\"(\"id\") ON DELETE no action ON UPDATE no action;\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266926752,
+      "kind": "agent_run",
+      "command": "sed -n '1,220p' lib/db/migrations/0000_soft_the_anarchist.sql"
+    },
+    {
+      "t": 1792266926961,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "d_teams_id_fk\" FOREIGN KEY (\"team_id\") REFERENCES \"public\".\"teams\"(\"id\") ON DELETE no action ON UPDATE no action;\nEXCEPTION\n WHEN duplicate_object THEN null;\nEND $$;\n--> statement-breakpoint\nDO $$ BEGIN\n ALTER TABLE \"activity_logs\" ADD CONSTRAINT \"activity_logs_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE no action ON UPDATE no action;\nEXCEPTION\n WHEN duplicate_object THEN null;\nEND $$;\n--> statement-breakpoint\nDO $$ BEGIN\n ALTER TABLE \"invitations\" ADD CONSTRAINT \"invitations_team_id_teams_id_fk\" FOREIGN KEY (\"team_id\") REFERENCES \"public\".\"teams\"(\"id\") ON DELETE no action ON UPDATE no action;\nEXCEPTION\n WHEN duplicate_object THEN null;\nEND $$;\n--> statement-breakpoint\nDO $$ BEGIN\n ALTER TABLE \"invitations\" ADD CONSTRAINT \"invitations_invited_by_users_id_fk\" FOREIGN KEY (\"invited_by\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE no action ON UPDATE no action;\nEXCEPTION\n WHEN duplicate_object THEN null;\nEND $$;\n--> statement-breakpoint\nDO $$ BEGIN\n ALTER TABLE \"team_members\" ADD CONSTRAINT \"team_members_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE no action ON UPDATE no action;\nEXCEPTION\n WHEN duplicate_object THEN null;\nEND $$;\n--> statement-breakpoint\nDO $$ BEGIN\n ALTER TABLE \"team_members\" ADD CONSTRAINT \"team_members_team_id_teams_id_fk\" FOREIGN KEY (\"team_id\") REFERENCES \"public\".\"teams\"(\"id\") ON DELETE no action ON UPDATE no action;\nEXCEPTION\n WHEN duplicate_object THEN null;\nEND $$;\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266930367,
+      "kind": "agent_run",
+      "command": "docker exec -i pg psql -U postgres -d app -c \"BEGIN; DELETE FROM team_members WHERE team_id=4242 OR user_id=4242; DELETE FROM activity_logs WHERE team_id=4242 OR user_id=4242; DELETE FROM invitations WHERE team_id=4242 OR invited_by=4242; DELETE FROM teams WHERE stripe_customer_id='cus_twice' OR id=4242; DELETE FROM users WHERE email='twice@example.com' OR id=4242; INSERT INTO users (id,name,email,password_hash,role,created_at,updated_at,deleted_at) VALUES (4242,'Twice User','twice@example.com','x','owner','2024-01-01 00:00:00','2024-01-01 00:00:00',NULL); INSERT INTO teams (id,name,created_at,updated_at,stripe_customer_id,stripe_subscription_id,stripe_product_id,plan_name,subscription_status) VALUES (4242,'Twice Team','2024-01-01 00:00:00','2024-01-01 00:00:00','cus_twice',NULL,NULL,NULL,NULL); INSERT INTO team_members (id,user_id,team_id,role,joined_at) VALUES (4242,4242,4242,'owner','2024-01-01 00:00:00'); SELECT id,name,stripe_customer_id,stripe_subscription_id,stripe_product_id,plan_name,subscription_status FROM teams WHERE stripe_customer_id='cus_twice'; ROLLBACK;\""
+    },
+    {
+      "t": 1792266930676,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "BEGIN\nDELETE 0\nDELETE 0\nDELETE 0\nDELETE 0\nDELETE 0\nINSERT 0 1\nINSERT 0 1\nINSERT 0 1\n  id  |    name    | stripe_customer_id | stripe_subscription_id | stripe_product_id | plan_name | subscription_status \n------+------------+--------------------+------------------------+-------------------+-----------+---------------------\n 4242 | Twice Team | cus_twice          |                        |                   |           | \n(1 row)\n\nROLLBACK\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266941088,
+      "kind": "agent_write",
+      "path": "/app/.twice/spec.json",
+      "content": "{\n  \"webhook_path\": \"/api/stripe/webhook\",\n  \"reset_sql\": \"DELETE FROM team_members WHERE team_id = 4242 OR user_id = 4242; DELETE FROM activity_logs WHERE team_id = 4242 OR user_id = 4242; DELETE FROM invitations WHERE team_id = 4242 OR invited_by = 4242; DELETE FROM teams WHERE stripe_customer_id = 'cus_twice' OR id = 4242; DELETE FROM users WHERE email = 'twice@example.com' OR id = 4242; INSERT INTO users (id, name, email, password_hash, role, created_at, updated_at, deleted_at) VALUES (4242, 'Twice User', 'twice@example.com', 'x', 'owner', '2024-01-01 00:00:00', '2024-01-01 00:00:00', NULL); INSERT INTO teams (id, name, created_at, updated_at, stripe_customer_id, stripe_subscription_id, stripe_product_id, plan_name, subscription_status) VALUES (4242, 'Twice Team', '2024-01-01 00:00:00', '2024-01-01 00:00:00', 'cus_twice', NULL, NULL, NULL, NULL); INSERT INTO team_members (id, user_id, team_id, role, joined_at) VALUES (4242, 4242, 4242, 'owner', '2024-01-01 00:00:00');\",\n  \"state_sql\": \"SELECT stripe_customer_id, stripe_subscription_id, stripe_product_id, plan_name, subscription_status FROM teams WHERE stripe_customer_id = 'cus_twice' LIMIT 1;\",\n  \"events\": [\n    {\n      \"id\": \"evt_twice_1\",\n      \"object\": \"event\",\n      \"type\": \"customer.subscription.updated\",\n      \"created\": 1704067200,\n      \"data\": {\n        \"object\": {\n          \"id\": \"sub_twice\",\n          \"object\": \"subscription\",\n          \"customer\": \"cus_twice\",\n          \"status\": \"trialing\",\n          \"items\": {\n            \"object\": \"list\",\n            \"data\": [\n              {\n                \"id\": \"si_twice_1\",\n                \"object\": \"subscription_item\",\n                \"plan\": {\n                  \"id\": \"price_twice_monthly\",\n                  \"object\": \"plan\",\n                  \"product\": {\n                    \"id\": \"prod_twice_basic\",\n                    \"object\": \"product\",\n                    \"name\": \"Basic\"\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    },\n    {\n      \"id\": \"evt_twice_2\",\n      \"object\": \"event\",\n      \"type\": \"customer.subscription.updated\",\n      \"created\": 1705276800,\n      \"data\": {\n        \"object\": {\n          \"id\": \"sub_twice\",\n          \"object\": \"subscription\",\n          \"customer\": \"cus_twice\",\n          \"status\": \"active\",\n          \"items\": {\n            \"object\": \"list\",\n            \"data\": [\n              {\n                \"id\": \"si_twice_1\",\n                \"object\": \"subscription_item\",\n                \"plan\": {\n                  \"id\": \"price_twice_monthly\",\n                  \"object\": \"plan\",\n                  \"product\": {\n                    \"id\": \"prod_twice_basic\",\n                    \"object\": \"product\",\n                    \"name\": \"Basic\"\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    },\n    {\n      \"id\": \"evt_twice_3\",\n      \"object\": \"event\",\n      \"type\": \"customer.subscription.updated\",\n      \"created\": 1707868800,\n      \"data\": {\n        \"object\": {\n          \"id\": \"sub_twice\",\n          \"object\": \"subscription\",\n          \"customer\": \"cus_twice\",\n          \"status\": \"unpaid\",\n          \"items\": {\n            \"object\": \"list\",\n            \"data\": [\n              {\n                \"id\": \"si_twice_1\",\n                \"object\": \"subscription_item\",\n                \"plan\": {\n                  \"id\": \"price_twice_monthly\",\n                  \"object\": \"plan\",\n                  \"product\": {\n                    \"id\": \"prod_twice_basic\",\n                    \"object\": \"product\",\n                    \"name\": \"Basic\"\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    },\n    {\n      \"id\": \"evt_twice_4\",\n      \"object\": \"event\",\n      \"type\": \"customer.subscription.deleted\",\n      \"created\": 1707955200,\n      \"data\": {\n        \"object\": {\n          \"id\": \"sub_twice\",\n          \"object\": \"subscription\",\n          \"customer\": \"cus_twice\",\n          \"status\": \"canceled\",\n          \"items\": {\n            \"object\": \"list\",\n            \"data\": [\n              {\n                \"id\": \"si_twice_1\",\n                \"object\": \"subscription_item\",\n                \"plan\": {\n                  \"id\": \"price_twice_monthly\",\n                  \"object\": \"plan\",\n                  \"product\": {\n                    \"id\": \"prod_twice_basic\",\n                    \"object\": \"product\",\n                    \"name\": \"Basic\"\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    }\n  ],\n  \"expected_after\": [\n    {\n      \"stripe_customer_id\": \"cus_twice\",\n      \"stripe_subscription_id\": \"sub_twice\",\n      \"stripe_product_id\": \"prod_twice_basic\",\n      \"plan_name\": \"Basic\",\n      \"subscription_status\": \"trialing\"\n    },\n    {\n      \"stripe_customer_id\": \"cus_twice\",\n      \"stripe_subscription_id\": \"sub_twice\",\n      \"stripe_product_id\": \"prod_twice_basic\",\n      \"plan_name\": \"Basic\",\n      \"subscription_status\": \"active\"\n    },\n    {\n      \"stripe_customer_id\": \"cus_twice\",\n      \"stripe_subscription_id\": null,\n      \"stripe_product_id\": null,\n      \"plan_name\": null,\n      \"subscription_status\": \"unpaid\"\n    },\n    {\n      \"stripe_customer_id\": \"cus_twice\",\n      \"stripe_subscription_id\": null,\n      \"stripe_product_id\": null,\n      \"plan_name\": null,\n      \"subscription_status\": \"canceled\"\n    }\n  ]\n}\n"
+    },
+    {
+      "t": 1792266943589,
+      "kind": "agent_done",
+      "text": "Read the Stripe webhook route and its subscription handler, confirmed the app only acts on customer.subscription.updated and customer.subscription.deleted at /api/stripe/webhook, inspected the teams schema and subscription update logic, validated a safe reset SQL sequence against Postgres for a single test customer/team, and wrote /app/.twice/spec.json with the webhook path, verified reset/state SQL, four chronological Stripe event objects for sub_twice, and the expected row state after each delivery."
+    },
+    {
+      "t": 1792266945132,
+      "kind": "baseline",
+      "name": "In order",
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-baseline.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 72
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 11
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266945141,
+      "kind": "explore_start",
+      "round": 1,
+      "count": 12,
+      "mode": "sequential"
+    },
+    {
+      "t": 1792266946441,
+      "kind": "schedule",
+      "round": 1,
+      "name": "In order",
+      "why": "The order every test suite uses.",
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-in-order.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 46
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 10
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266948410,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Every event twice",
+      "why": "Stripe can deliver the same event more than once.",
+      "order": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "file": "/twice/plan-every-event-twice.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 77
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 13
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 6
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266949721,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Fully reversed",
+      "why": "Stripe does not guarantee event order.",
+      "order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "file": "/twice/plan-fully-reversed.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "[object Object]",
+        "plan_name": "Basic",
+        "subscription_status": "trialing"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "stripe_subscription_id",
+          "expected": null,
+          "actual": "sub_twice"
+        },
+        {
+          "column": "stripe_product_id",
+          "expected": null,
+          "actual": "[object Object]"
+        },
+        {
+          "column": "plan_name",
+          "expected": null,
+          "actual": "Basic"
+        },
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "trialing"
+        }
+      ]
+    },
+    {
+      "t": 1792266951024,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Events 1 and 2 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        1,
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-events-1-and-2-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 20
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266952313,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Events 2 and 3 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        2,
+        1,
+        3
+      ],
+      "file": "/twice/plan-events-2-and-3-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 45
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266953603,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Events 3 and 4 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "file": "/twice/plan-events-3-and-4-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 11
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "unpaid"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "unpaid"
+        }
+      ]
+    },
+    {
+      "t": 1792266955044,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Late retry of event 1",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        0
+      ],
+      "file": "/twice/plan-late-retry-of-event-1.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "[object Object]",
+        "plan_name": "Basic",
+        "subscription_status": "trialing"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "stripe_subscription_id",
+          "expected": null,
+          "actual": "sub_twice"
+        },
+        {
+          "column": "stripe_product_id",
+          "expected": null,
+          "actual": "[object Object]"
+        },
+        {
+          "column": "plan_name",
+          "expected": null,
+          "actual": "Basic"
+        },
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "trialing"
+        }
+      ]
+    },
+    {
+      "t": 1792266956491,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Late retry of event 2",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        1
+      ],
+      "file": "/twice/plan-late-retry-of-event-2.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 13
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "[object Object]",
+        "plan_name": "Basic",
+        "subscription_status": "active"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "stripe_subscription_id",
+          "expected": null,
+          "actual": "sub_twice"
+        },
+        {
+          "column": "stripe_product_id",
+          "expected": null,
+          "actual": "[object Object]"
+        },
+        {
+          "column": "plan_name",
+          "expected": null,
+          "actual": "Basic"
+        },
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "active"
+        }
+      ]
+    },
+    {
+      "t": 1792266957942,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Late retry of event 3",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        2
+      ],
+      "file": "/twice/plan-late-retry-of-event-3.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "unpaid"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "unpaid"
+        }
+      ]
+    },
+    {
+      "t": 1792266959080,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Event 1 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-1-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 45
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266960211,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Event 2 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-2-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266961341,
+      "kind": "schedule",
+      "round": 1,
+      "name": "Event 3 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        1,
+        3
+      ],
+      "file": "/twice/plan-event-3-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266961345,
+      "kind": "summary",
+      "text": "5 of 12 delivery orders left the app in the wrong state",
+      "broken": 5,
+      "total": 12
+    },
+    {
+      "t": 1792266961559,
+      "kind": "phase",
+      "text": "Writing a fix (round 1)"
+    },
+    {
+      "t": 1792266963571,
+      "kind": "agent_run",
+      "command": "grep -R \"subscription_status\\|stripe_subscription_id\\|stripe_product_id\\|plan_name\" -n app lib | head -n 100"
+    },
+    {
+      "t": 1792266963781,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "ns/meta/0000_snapshot.json:272:        \"stripe_product_id\": {\nlib/db/migrations/meta/0000_snapshot.json:273:          \"name\": \"stripe_product_id\",\nlib/db/migrations/meta/0000_snapshot.json:278:        \"plan_name\": {\nlib/db/migrations/meta/0000_snapshot.json:279:          \"name\": \"plan_name\",\nlib/db/migrations/meta/0000_snapshot.json:284:        \"subscription_status\": {\nlib/db/migrations/meta/0000_snapshot.json:285:          \"name\": \"subscription_status\",\nlib/db/migrations/meta/0000_snapshot.json:302:        \"teams_stripe_subscription_id_unique\": {\nlib/db/migrations/meta/0000_snapshot.json:303:          \"name\": \"teams_stripe_subscription_id_unique\",\nlib/db/migrations/meta/0000_snapshot.json:306:            \"stripe_subscription_id\"\nlib/db/migrations/0000_soft_the_anarchist.sql:34:\t\"stripe_subscription_id\" text,\nlib/db/migrations/0000_soft_the_anarchist.sql:35:\t\"stripe_product_id\" text,\nlib/db/migrations/0000_soft_the_anarchist.sql:36:\t\"plan_name\" varchar(50),\nlib/db/migrations/0000_soft_the_anarchist.sql:37:\t\"subscription_status\" varchar(20),\nlib/db/migrations/0000_soft_the_anarchist.sql:39:\tCONSTRAINT \"teams_stripe_subscription_id_unique\" UNIQUE(\"stripe_subscription_id\")\nlib/db/schema.ts:28:  stripeSubscriptionId: text('stripe_subscription_id').unique(),\nlib/db/schema.ts:29:  stripeProductId: text('stripe_product_id'),\nlib/db/schema.ts:30:  planName: varchar('plan_name', { length: 50 }),\nlib/db/schema.ts:31:  subscriptionStatus: varchar('subscription_status', { length: 20 }),\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266963782,
+      "kind": "agent_run",
+      "command": "docker exec -i pg psql -U postgres -d app -c \"SELECT column_name,data_type FROM information_schema.columns WHERE table_name='teams' ORDER BY ordinal_position;\""
+    },
+    {
+      "t": 1792266964090,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "      column_name       |          data_type          \n------------------------+-----------------------------\n id                     | integer\n name                   | character varying\n created_at             | timestamp without time zone\n updated_at             | timestamp without time zone\n stripe_customer_id     | text\n stripe_subscription_id | text\n stripe_product_id      | text\n plan_name              | character varying\n subscription_status    | character varying\n(9 rows)\n\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266970147,
+      "kind": "agent_run",
+      "command": "python - <<'PY'\nfrom pathlib import Path\np=Path('lib/db/schema.ts')\ns=p.read_text()\ns=s.replace(\"  subscriptionStatus: varchar('subscription_status', { length: 20 }),\\n});\",\"  subscriptionStatus: varchar('subscription_status', { length: 20 }),\\n  stripeEventCreated: integer('stripe_event_created'),\\n});\")\np.write_text(s)\n\np=Path('lib/db/queries.ts')\ns=p.read_text()\ns=s.replace(\"export async function updateTeamSubscription(\\n  teamId: number,\\n  subscriptionData: {\\n    stripeSubscriptionId: string | null;\\n    stripeProductId: string | null;\\n    planName: string | null;\\n    subscriptionStatus: string;\\n  }\\n) {\\n  await db\\n    .update(teams)\\n    .set({\\n      ...subscriptionData,\\n      updatedAt: new Date()\\n    })\\n    .where(eq(teams.id, teamId));\\n}\\n\", \"export async function updateTeamSubscription(\\n  teamId: number,\\n  subscriptionData: {\\n    stripeSubscriptionId: string | null;\\n    stripeProductId: string | null;\\n    planName: string | null;\\n    subscriptionStatus: string;\\n    stripeEventCreated: number;\\n  }\\n) {\\n  await db\\n    .update(teams)\\n    .set({\\n      ...subscriptionData,\\n      updatedAt: new Date()\\n    })\\n    .where(eq(teams.id, teamId));\\n}\\n\")\np.write_text(s)\n\np=Path('lib/payments/stripe.ts')\ns=p.read_text()\ns=s.replace(\"export async function handleSubscriptionChange(\\n  subscription: Stripe.Subscription\\n) {\\n\",\"export async function handleSubscriptionChange(\\n  subscription: Stripe.Subscription,\\n  eventCreated: number\\n) {\\n\")\ns=s.replace(\"  if (!team) {\\n    console.error('Team not found for Stripe customer:', customerId);\\n    return;\\n  }\\n\\n  if (status === 'active' || status === 'trialing') {\\n\", \"  if (!team) {\\n    console.error('Team not found for Stripe customer:', customerId);\\n    return;\\n  }\\n\\n  if (team.stripeEventCreated && team.stripeEventCreated > eventCreated) {\\n    return;\\n  }\\n\\n  if (status === 'active' || status === 'trialing') {\\n\")\ns=s.replace(\"      subscriptionStatus: status\\n    });\\n\", \"      subscriptionStatus: status,\\n      stripeEventCreated: eventCreated\\n    });\\n\")\ns=s.replace(\"      subscriptionStatus: status\\n    });\\n\", \"      subscriptionStatus: status,\\n      stripeEventCreated: eventCreated\\n    });\\n\",1)\np.write_text(s)\n\np=Path('app/api/stripe/webhook/route.ts')\ns=p.read_text()\ns=s.replace(\"      await handleSubscriptionChange(subscription);\",\"      await handleSubscriptionChange(subscription, event.created);\")\np.write_text(s)\nPY\nsed -n '20,45p' lib/db/schema.ts && printf '\\n---\\n' && sed -n '35,75p' lib/db/queries.ts && printf '\\n---\\n' && sed -n '95,155p' lib/payments/stripe.ts && printf '\\n---\\n' && sed -n '1,80p' app/api/stripe/webhook/route.ts"
+    },
+    {
+      "t": 1792266970403,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "lanName: (plan?.product as Stripe.Product).name,\n      subscriptionStatus: status,\n      stripeEventCreated: eventCreated\n    });\n  } else if (status === 'canceled' || status === 'unpaid') {\n    await updateTeamSubscription(team.id, {\n      stripeSubscriptionId: null,\n      stripeProductId: null,\n      planName: null,\n      subscriptionStatus: status,\n      stripeEventCreated: eventCreated\n    });\n  }\n}\n\n\n---\nimport Stripe from 'stripe';\nimport { handleSubscriptionChange, stripe } from '@/lib/payments/stripe';\nimport { NextRequest, NextResponse } from 'next/server';\n\nconst webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;\n\nexport async function POST(request: NextRequest) {\n  const payload = await request.text();\n  const signature = request.headers.get('stripe-signature') as string;\n\n  let event: Stripe.Event;\n\n  try {\n    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);\n  } catch (err) {\n    console.error('Webhook signature verification failed.', err);\n    return NextResponse.json(\n      { error: 'Webhook signature verification failed.' },\n      { status: 400 }\n    );\n  }\n\n  switch (event.type) {\n    case 'customer.subscription.updated':\n    case 'customer.subscription.deleted':\n      const subscription = event.data.object as Stripe.Subscription;\n      await handleSubscriptionChange(subscription, event.created);\n      break;\n    default:\n      console.log(`Unhandled event type ${event.type}`);\n  }\n\n  return NextResponse.json({ received: true });\n}\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266972178,
+      "kind": "agent_run",
+      "command": "docker exec -i pg psql -U postgres -d app -c \"ALTER TABLE teams ADD COLUMN IF NOT EXISTS stripe_event_created integer;\" && node /twice/replay.mjs /twice/plan-fully-reversed.json && node /twice/replay.mjs /twice/plan-events-3-and-4-swapped.json && node /twice/replay.mjs /twice/plan-late-retry-of-event-1.json && node /twice/replay.mjs /twice/plan-late-retry-of-event-2.json && node /twice/replay.mjs /twice/plan-late-retry-of-event-3.json"
+    },
+    {
+      "t": 1792266977584,
+      "kind": "agent_result",
+      "code": 0,
+      "stdout": "tus\":200,\"ms\":10},{\"id\":\"evt_twice_4\",\"type\":\"customer.subscription.deleted\",\"status\":200,\"ms\":8},{\"id\":\"evt_twice_1\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":7}],\"state\":{\"stripe_customer_id\":\"cus_twice\",\"stripe_subscription_id\":null,\"stripe_product_id\":null,\"plan_name\":null,\"subscription_status\":\"canceled\"},\"error\":null}\n{\"deliveries\":[{\"id\":\"evt_twice_1\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":45},{\"id\":\"evt_twice_2\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":8},{\"id\":\"evt_twice_3\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":10},{\"id\":\"evt_twice_4\",\"type\":\"customer.subscription.deleted\",\"status\":200,\"ms\":8},{\"id\":\"evt_twice_2\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":9}],\"state\":{\"stripe_customer_id\":\"cus_twice\",\"stripe_subscription_id\":null,\"stripe_product_id\":null,\"plan_name\":null,\"subscription_status\":\"canceled\"},\"error\":null}\n{\"deliveries\":[{\"id\":\"evt_twice_1\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":43},{\"id\":\"evt_twice_2\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":8},{\"id\":\"evt_twice_3\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":8},{\"id\":\"evt_twice_4\",\"type\":\"customer.subscription.deleted\",\"status\":200,\"ms\":7},{\"id\":\"evt_twice_3\",\"type\":\"customer.subscription.updated\",\"status\":200,\"ms\":6}],\"state\":{\"stripe_customer_id\":\"cus_twice\",\"stripe_subscription_id\":null,\"stripe_product_id\":null,\"plan_name\":null,\"subscription_status\":\"canceled\"},\"error\":null}\n",
+      "stderr": ""
+    },
+    {
+      "t": 1792266979881,
+      "kind": "agent_done",
+      "text": "I made the webhook handling monotonic by event.created with a minimal app-code change: added teams.stripe_event_created to the Drizzle schema, created that column in Postgres via psql, passed event.created from the webhook route into handleSubscriptionChange, and had the handler ignore any event older than the newest one already stored for that customer. The handler still updates/cancels subscriptions as before, but now older updated events cannot resurrect a canceled subscription. I then reran all five replay plans, and each ended with the correct canceled final state."
+    },
+    {
+      "t": 1792266979881,
+      "kind": "explore_start",
+      "round": 2,
+      "count": 12,
+      "mode": "sequential"
+    },
+    {
+      "t": 1792266981193,
+      "kind": "schedule",
+      "round": 2,
+      "name": "In order",
+      "why": "The order every test suite uses.",
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-in-order.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 45
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 30
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266983126,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Every event twice",
+      "why": "Stripe can deliver the same event more than once.",
+      "order": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "file": "/twice/plan-every-event-twice.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 6
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 6
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266984410,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Fully reversed",
+      "why": "Stripe does not guarantee event order.",
+      "order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "file": "/twice/plan-fully-reversed.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266985714,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Events 1 and 2 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        1,
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-events-1-and-2-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 6
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266986999,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Events 2 and 3 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        2,
+        1,
+        3
+      ],
+      "file": "/twice/plan-events-2-and-3-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 47
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266988278,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Events 3 and 4 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "file": "/twice/plan-events-3-and-4-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 42
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266989721,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Late retry of event 1",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        0
+      ],
+      "file": "/twice/plan-late-retry-of-event-1.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 47
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266991164,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Late retry of event 2",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        1
+      ],
+      "file": "/twice/plan-late-retry-of-event-2.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266992609,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Late retry of event 3",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        2
+      ],
+      "file": "/twice/plan-late-retry-of-event-3.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 6
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266993737,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Event 1 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-1-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266994876,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Event 2 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-2-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 55
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266996013,
+      "kind": "schedule",
+      "round": 2,
+      "name": "Event 3 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        1,
+        3
+      ],
+      "file": "/twice/plan-event-3-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 47
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "t": 1792266996013,
+      "kind": "summary",
+      "text": "0 of 12 delivery orders still wrong after the fix",
+      "broken": 0,
+      "total": 12,
+      "round": 2
+    },
+    {
+      "t": 1792266996220,
+      "kind": "end",
+      "text": "Every delivery order now ends in the right state"
+    }
+  ],
+  "spec": {
+    "webhook_path": "/api/stripe/webhook",
+    "reset_sql": "DELETE FROM team_members WHERE team_id = 4242 OR user_id = 4242; DELETE FROM activity_logs WHERE team_id = 4242 OR user_id = 4242; DELETE FROM invitations WHERE team_id = 4242 OR invited_by = 4242; DELETE FROM teams WHERE stripe_customer_id = 'cus_twice' OR id = 4242; DELETE FROM users WHERE email = 'twice@example.com' OR id = 4242; INSERT INTO users (id, name, email, password_hash, role, created_at, updated_at, deleted_at) VALUES (4242, 'Twice User', 'twice@example.com', 'x', 'owner', '2024-01-01 00:00:00', '2024-01-01 00:00:00', NULL); INSERT INTO teams (id, name, created_at, updated_at, stripe_customer_id, stripe_subscription_id, stripe_product_id, plan_name, subscription_status) VALUES (4242, 'Twice Team', '2024-01-01 00:00:00', '2024-01-01 00:00:00', 'cus_twice', NULL, NULL, NULL, NULL); INSERT INTO team_members (id, user_id, team_id, role, joined_at) VALUES (4242, 4242, 4242, 'owner', '2024-01-01 00:00:00');",
+    "state_sql": "SELECT stripe_customer_id, stripe_subscription_id, stripe_product_id, plan_name, subscription_status FROM teams WHERE stripe_customer_id = 'cus_twice' LIMIT 1;",
+    "events": [
+      {
+        "id": "evt_twice_1",
+        "object": "event",
+        "type": "customer.subscription.updated",
+        "created": 1704067200,
+        "data": {
+          "object": {
+            "id": "sub_twice",
+            "object": "subscription",
+            "customer": "cus_twice",
+            "status": "trialing",
+            "items": {
+              "object": "list",
+              "data": [
+                {
+                  "id": "si_twice_1",
+                  "object": "subscription_item",
+                  "plan": {
+                    "id": "price_twice_monthly",
+                    "object": "plan",
+                    "product": {
+                      "id": "prod_twice_basic",
+                      "object": "product",
+                      "name": "Basic"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "evt_twice_2",
+        "object": "event",
+        "type": "customer.subscription.updated",
+        "created": 1705276800,
+        "data": {
+          "object": {
+            "id": "sub_twice",
+            "object": "subscription",
+            "customer": "cus_twice",
+            "status": "active",
+            "items": {
+              "object": "list",
+              "data": [
+                {
+                  "id": "si_twice_1",
+                  "object": "subscription_item",
+                  "plan": {
+                    "id": "price_twice_monthly",
+                    "object": "plan",
+                    "product": {
+                      "id": "prod_twice_basic",
+                      "object": "product",
+                      "name": "Basic"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "evt_twice_3",
+        "object": "event",
+        "type": "customer.subscription.updated",
+        "created": 1707868800,
+        "data": {
+          "object": {
+            "id": "sub_twice",
+            "object": "subscription",
+            "customer": "cus_twice",
+            "status": "unpaid",
+            "items": {
+              "object": "list",
+              "data": [
+                {
+                  "id": "si_twice_1",
+                  "object": "subscription_item",
+                  "plan": {
+                    "id": "price_twice_monthly",
+                    "object": "plan",
+                    "product": {
+                      "id": "prod_twice_basic",
+                      "object": "product",
+                      "name": "Basic"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "evt_twice_4",
+        "object": "event",
+        "type": "customer.subscription.deleted",
+        "created": 1707955200,
+        "data": {
+          "object": {
+            "id": "sub_twice",
+            "object": "subscription",
+            "customer": "cus_twice",
+            "status": "canceled",
+            "items": {
+              "object": "list",
+              "data": [
+                {
+                  "id": "si_twice_1",
+                  "object": "subscription_item",
+                  "plan": {
+                    "id": "price_twice_monthly",
+                    "object": "plan",
+                    "product": {
+                      "id": "prod_twice_basic",
+                      "object": "product",
+                      "name": "Basic"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "expected_after": [
+      {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "prod_twice_basic",
+        "plan_name": "Basic",
+        "subscription_status": "trialing"
+      },
+      {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "prod_twice_basic",
+        "plan_name": "Basic",
+        "subscription_status": "active"
+      },
+      {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "unpaid"
+      },
+      {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      }
+    ]
+  },
+  "before": [
+    {
+      "name": "In order",
+      "why": "The order every test suite uses.",
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-in-order.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 46
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 10
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Every event twice",
+      "why": "Stripe can deliver the same event more than once.",
+      "order": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "file": "/twice/plan-every-event-twice.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 77
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 13
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 6
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Fully reversed",
+      "why": "Stripe does not guarantee event order.",
+      "order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "file": "/twice/plan-fully-reversed.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "[object Object]",
+        "plan_name": "Basic",
+        "subscription_status": "trialing"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "stripe_subscription_id",
+          "expected": null,
+          "actual": "sub_twice"
+        },
+        {
+          "column": "stripe_product_id",
+          "expected": null,
+          "actual": "[object Object]"
+        },
+        {
+          "column": "plan_name",
+          "expected": null,
+          "actual": "Basic"
+        },
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "trialing"
+        }
+      ]
+    },
+    {
+      "name": "Events 1 and 2 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        1,
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-events-1-and-2-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 20
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Events 2 and 3 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        2,
+        1,
+        3
+      ],
+      "file": "/twice/plan-events-2-and-3-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 45
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Events 3 and 4 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "file": "/twice/plan-events-3-and-4-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 11
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "unpaid"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "unpaid"
+        }
+      ]
+    },
+    {
+      "name": "Late retry of event 1",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        0
+      ],
+      "file": "/twice/plan-late-retry-of-event-1.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "[object Object]",
+        "plan_name": "Basic",
+        "subscription_status": "trialing"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "stripe_subscription_id",
+          "expected": null,
+          "actual": "sub_twice"
+        },
+        {
+          "column": "stripe_product_id",
+          "expected": null,
+          "actual": "[object Object]"
+        },
+        {
+          "column": "plan_name",
+          "expected": null,
+          "actual": "Basic"
+        },
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "trialing"
+        }
+      ]
+    },
+    {
+      "name": "Late retry of event 2",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        1
+      ],
+      "file": "/twice/plan-late-retry-of-event-2.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 13
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": "sub_twice",
+        "stripe_product_id": "[object Object]",
+        "plan_name": "Basic",
+        "subscription_status": "active"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "stripe_subscription_id",
+          "expected": null,
+          "actual": "sub_twice"
+        },
+        {
+          "column": "stripe_product_id",
+          "expected": null,
+          "actual": "[object Object]"
+        },
+        {
+          "column": "plan_name",
+          "expected": null,
+          "actual": "Basic"
+        },
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "active"
+        }
+      ]
+    },
+    {
+      "name": "Late retry of event 3",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        2
+      ],
+      "file": "/twice/plan-late-retry-of-event-3.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "unpaid"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": false,
+      "diffs": [
+        {
+          "column": "subscription_status",
+          "expected": "canceled",
+          "actual": "unpaid"
+        }
+      ]
+    },
+    {
+      "name": "Event 1 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-1-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 45
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Event 2 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-2-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Event 3 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        1,
+        3
+      ],
+      "file": "/twice/plan-event-3-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    }
+  ],
+  "after": [
+    {
+      "name": "In order",
+      "why": "The order every test suite uses.",
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-in-order.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 45
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 30
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Every event twice",
+      "why": "Stripe can deliver the same event more than once.",
+      "order": [
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "file": "/twice/plan-every-event-twice.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 6
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 6
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Fully reversed",
+      "why": "Stripe does not guarantee event order.",
+      "order": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "file": "/twice/plan-fully-reversed.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Events 1 and 2 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        1,
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-events-1-and-2-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 6
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Events 2 and 3 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        2,
+        1,
+        3
+      ],
+      "file": "/twice/plan-events-2-and-3-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 47
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Events 3 and 4 swapped",
+      "why": "Two events raced each other.",
+      "order": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "file": "/twice/plan-events-3-and-4-swapped.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 42
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Late retry of event 1",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        0
+      ],
+      "file": "/twice/plan-late-retry-of-event-1.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 47
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Late retry of event 2",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        1
+      ],
+      "file": "/twice/plan-late-retry-of-event-2.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 43
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Late retry of event 3",
+      "why": "A failed delivery is retried after newer events landed.",
+      "order": [
+        0,
+        1,
+        2,
+        3,
+        2
+      ],
+      "file": "/twice/plan-late-retry-of-event-3.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 8
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 9
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 6
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Event 1 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        1,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-1-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 44
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Event 2 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        2,
+        3
+      ],
+      "file": "/twice/plan-event-2-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 55
+        },
+        {
+          "id": "evt_twice_3",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 10
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 8
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    },
+    {
+      "name": "Event 3 never arrives",
+      "why": "A delivery is dropped for good.",
+      "order": [
+        0,
+        1,
+        3
+      ],
+      "file": "/twice/plan-event-3-never-arrives.json",
+      "deliveries": [
+        {
+          "id": "evt_twice_1",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 47
+        },
+        {
+          "id": "evt_twice_2",
+          "type": "customer.subscription.updated",
+          "status": 200,
+          "ms": 7
+        },
+        {
+          "id": "evt_twice_4",
+          "type": "customer.subscription.deleted",
+          "status": 200,
+          "ms": 7
+        }
+      ],
+      "state": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "expected": {
+        "stripe_customer_id": "cus_twice",
+        "stripe_subscription_id": null,
+        "stripe_product_id": null,
+        "plan_name": null,
+        "subscription_status": "canceled"
+      },
+      "ok": true,
+      "diffs": []
+    }
+  ],
+  "diff": "diff --git a/app/api/stripe/webhook/route.ts b/app/api/stripe/webhook/route.ts\nindex 970d9ec..b9ce1d0 100644\n--- a/app/api/stripe/webhook/route.ts\n+++ b/app/api/stripe/webhook/route.ts\n@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {\n     case 'customer.subscription.updated':\n     case 'customer.subscription.deleted':\n       const subscription = event.data.object as Stripe.Subscription;\n-      await handleSubscriptionChange(subscription);\n+      await handleSubscriptionChange(subscription, event.created);\n       break;\n     default:\n       console.log(`Unhandled event type ${event.type}`);\ndiff --git a/lib/db/queries.ts b/lib/db/queries.ts\nindex 1bcdf64..b1c0955 100644\n--- a/lib/db/queries.ts\n+++ b/lib/db/queries.ts\n@@ -53,6 +53,7 @@ export async function updateTeamSubscription(\n     stripeProductId: string | null;\n     planName: string | null;\n     subscriptionStatus: string;\n+    stripeEventCreated: number;\n   }\n ) {\n   await db\ndiff --git a/lib/db/schema.ts b/lib/db/schema.ts\nindex 1d047ce..efc363e 100644\n--- a/lib/db/schema.ts\n+++ b/lib/db/schema.ts\n@@ -29,6 +29,7 @@ export const teams = pgTable('teams', {\n   stripeProductId: text('stripe_product_id'),\n   planName: varchar('plan_name', { length: 50 }),\n   subscriptionStatus: varchar('subscription_status', { length: 20 }),\n+  stripeEventCreated: integer('stripe_event_created'),\n });\n \n export const teamMembers = pgTable('team_members', {\ndiff --git a/lib/payments/stripe.ts b/lib/payments/stripe.ts\nindex 6f24b79..8670fb7 100644\n--- a/lib/payments/stripe.ts\n+++ b/lib/payments/stripe.ts\n@@ -115,7 +115,8 @@ export async function createCustomerPortalSession(team: Team) {\n }\n \n export async function handleSubscriptionChange(\n-  subscription: Stripe.Subscription\n+  subscription: Stripe.Subscription,\n+  eventCreated: number\n ) {\n   const customerId = subscription.customer as string;\n   const subscriptionId = subscription.id;\n@@ -128,20 +129,26 @@ export async function handleSubscriptionChange(\n     return;\n   }\n \n+  if (team.stripeEventCreated && team.stripeEventCreated > eventCreated) {\n+    return;\n+  }\n+\n   if (status === 'active' || status === 'trialing') {\n     const plan = subscription.items.data[0]?.plan;\n     await updateTeamSubscription(team.id, {\n       stripeSubscriptionId: subscriptionId,\n       stripeProductId: plan?.product as string,\n       planName: (plan?.product as Stripe.Product).name,\n-      subscriptionStatus: status\n+      subscriptionStatus: status,\n+      stripeEventCreated: eventCreated\n     });\n   } else if (status === 'canceled' || status === 'unpaid') {\n     await updateTeamSubscription(team.id, {\n       stripeSubscriptionId: null,\n       stripeProductId: null,\n       planName: null,\n-      subscriptionStatus: status\n+      subscriptionStatus: status,\n+      stripeEventCreated: eventCreated\n     });\n   }\n }\ndiff --git a/tsconfig.json b/tsconfig.json\nindex f969d12..dd9a51f 100644\n--- a/tsconfig.json\n+++ b/tsconfig.json\n@@ -15,7 +15,7 @@\n     \"moduleResolution\": \"bundler\",\n     \"resolveJsonModule\": true,\n     \"isolatedModules\": true,\n-    \"jsx\": \"preserve\",\n+    \"jsx\": \"react-jsx\",\n     \"incremental\": true,\n     \"baseUrl\": \".\",\n     \"plugins\": [\n@@ -33,7 +33,8 @@\n     \"next-env.d.ts\",\n     \"**/*.ts\",\n     \"**/*.tsx\",\n-    \".next/types/**/*.ts\"\n+    \".next/types/**/*.ts\",\n+    \".next/dev/types/**/*.ts\"\n   ],\n   \"exclude\": [\n     \"node_modules\"\n",
+  "files": " tsconfig.json | 5 +++--\n 1 file changed, 3 insertions(+), 2 deletions(-)\n M tsconfig.json\n?? .twice/\n"
+}
