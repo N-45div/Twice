@@ -48,6 +48,8 @@ The run viewer has three buttons under the fix:
 DATABASE_URL=postgres://localhost/dev STRIPE_WEBHOOK_SECRET=whsec_...   node tools/replay-pack.mjs twice-pack.json --url http://localhost:3000
 ```
 
+Tested on boxyhq/saas-starter-kit inside the sandbox: with the agent's fix the pack reports 12 of 12 and exits 0; with the original code it reports 7 of 12, lists the same 5 broken orders, and exits 1.
+
 ## Stack
 
 - **Stripe Projects** set up the stack from an empty directory: `stripe projects init`, then `stripe projects add createos/free` and `createos/project`, which created the CreateOS account and wrote its credentials to `.env`.
