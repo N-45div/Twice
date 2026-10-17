@@ -1,3 +1,4 @@
 [
-  { "target": "nextjs/saas-starter", "file": "run.json" }
+  { "target": "nextjs/saas-starter", "file": "run.json" },
+  { "target": "boxyhq/saas-starter-kit", "file": "run-boxyhq.json" }
 ]
