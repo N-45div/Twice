@@ -48,6 +48,19 @@
   .log .k { display: inline-block; min-width: 78px; color: var(--muted); font-size: 12px; }
   pre.diff { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow: auto; font-size: 12.5px; max-height: 560px; }
   .add { color: var(--ok); } .del { color: var(--bad); } .hunk { color: var(--accent); }
+  .now { margin: 24px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--accent); font-weight: 600; }
+  .now::before { content: '● LIVE  '; color: var(--bad); font-size: 12px; letter-spacing: 0.08em; }
+  body.live .wrap { max-width: 1860px; padding-top: 20px; }
+  body.live header p { display: none; }
+  body.live header h1 { font-size: 30px; margin: 0; }
+  body.live .cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: start; }
+  body.live .log { max-height: 760px; }
+  body.live .stats { margin: 16px 0; }
+  body.live h2 { margin-top: 18px; }
+  body.live footer, body.live .diffhead, body.live #diff { display: none; }
+  body.live .grid { grid-template-columns: repeat(3, 1fr); }
+  body.live .tile { padding: 10px 12px; }
+  body.live .tile .why { display: none; }
   footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
   a { color: var(--accent); }
   @media (max-width: 520px) { header h1 { font-size: 30px; } .grid { grid-template-columns: 1fr; } }
@@ -60,13 +73,14 @@
     <h1>A 200 isn't enough.</h1>
     <p>Twice is an agent that tests your Stripe webhook handler against the delivery orders Stripe's docs say will happen: duplicates, events out of order, late retries and dropped deliveries. It boots your real app and database in a CreateOS sandbox, replays signed events in every hostile order, checks what actually ended up in the database, then writes the fix and proves it.</p>
   </header>
+  <div class="now" id="now" hidden></div>
   <div class="stats" id="stats"></div>
   <h2>Every delivery order it tried</h2>
   <div class="tabs" id="tabs"></div>
   <div class="grid" id="grid"></div>
   <h2>What the agent did</h2>
   <div class="log" id="log"></div>
-  <h2>The fix it wrote</h2>
+  <h2 class="diffhead">The fix it wrote</h2>
   <pre class="diff mono" id="diff">No fix needed.</pre>
   <footer id="foot"></footer>
 </div>
@@ -92,26 +106,46 @@ function render(run) {
     <div class="stat"><b>${esc(run.mode === 'fork' ? 'One copy each' : 'One sandbox')}</b><span>${run.mode === 'fork' ? 'each order ran in its own fork of the paused, booted app' : 'orders ran one after another, database reset between them'}</span></div>`;
   const tabs = document.getElementById('tabs');
   const sets = [['Before the fix', before], ['After the fix', after]].filter(([, l]) => l.length);
-  tabs.innerHTML = sets.map(([n], i) => `<button class="${i ? '' : 'on'}" data-i="${i}">${n}</button>`).join('');
+  const pick = run.live ? sets.length - 1 : 0;
+  tabs.innerHTML = sets.map(([n], i) => `<button class="${i === pick ? 'on' : ''}" data-i="${i}">${n}</button>`).join('');
   const grid = document.getElementById('grid');
-  grid.innerHTML = tiles(sets[0]?.[1] || []);
+  grid.innerHTML = tiles(sets[pick]?.[1] || []);
   tabs.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...tabs.children].forEach((x) => x.classList.toggle('on', x === b)); grid.innerHTML = tiles(sets[b.dataset.i][1]); };
-  const keep = new Set(['phase', 'agent_run', 'agent_write', 'agent_done', 'baseline', 'summary', 'paused', 'forked', 'end']);
+  const keep = new Set(['resumed', 'egress', 'phase', 'agent_run', 'agent_write', 'agent_done', 'baseline', 'summary', 'paused', 'forked', 'end']);
   document.getElementById('log').innerHTML = run.events.filter((e) => keep.has(e.kind)).map((e) => {
-    const label = { phase: 'step', agent_run: 'ran', agent_write: 'wrote', agent_done: 'agent', baseline: 'checked', summary: 'result', paused: 'paused', forked: 'forked', end: 'done' }[e.kind];
+    const label = { resumed: 'resumed', egress: 'network', phase: 'step', agent_run: 'ran', agent_write: 'wrote', agent_done: 'agent', baseline: 'checked', summary: 'result', paused: 'paused', forked: 'forked', end: 'done' }[e.kind];
     const text = e.kind === 'agent_run' ? `<span class="mono">${esc(e.command)}</span>` : e.kind === 'agent_write' ? `<span class="mono">${esc(e.path)}</span>` :
       e.kind === 'baseline' ? `In-order delivery ${e.ok ? 'matches' : 'does not match'} the spec` : e.kind === 'forked' ? `${esc(e.name)} → ${esc(e.sandbox)} in ${(e.ms / 1000).toFixed(1)} s` : esc(e.text);
     return `<div><span class="k">${label}</span> ${text}</div>`;
   }).join('');
+  const now = document.getElementById('now');
+  if (run.live) {
+    const last = [...run.events].reverse().find((e) => ['resumed', 'phase', 'agent_run', 'agent_write', 'schedule', 'summary', 'end', 'egress', 'paused', 'forked'].includes(e.kind));
+    now.hidden = false;
+    now.textContent = !last ? 'Starting' : last.kind === 'agent_run' ? `Agent ran: ${last.command.slice(0, 120)}` : last.kind === 'agent_write' ? `Agent wrote ${last.path}` : last.kind === 'schedule' ? `Replayed: ${last.name} → ${last.ok ? 'right state' : 'WRONG state'}` : last.kind === 'forked' ? `Forked a copy for: ${last.name}` : last.text;
+    const log = document.getElementById('log'); log.scrollTop = log.scrollHeight;
+  }
   if (run.diff) document.getElementById('diff').innerHTML = esc(run.diff).split('\n').map((l) =>
     l.startsWith('+') && !l.startsWith('+++') ? `<span class="add">${l}</span>` : l.startsWith('-') && !l.startsWith('---') ? `<span class="del">${l}</span>` : l.startsWith('@@') ? `<span class="hunk">${l}</span>` : l).join('\n');
   document.getElementById('foot').innerHTML = `Run ${esc(run.id)} · stack set up with Stripe Projects · code runs in CreateOS sandboxes · <a href="https://github.com/N-45div/Twice">source</a>`;
 }
+if (new URLSearchParams(location.search).has('live')) {
+  document.body.classList.add('live');
+  const wrap = document.querySelector('.wrap'), cols = document.createElement('div'), left = document.createElement('div'), right = document.createElement('div');
+  cols.className = 'cols'; cols.append(left, right);
+  const hs = wrap.querySelectorAll('h2');
+  left.append(document.getElementById('now'), document.getElementById('stats'), hs[0], document.getElementById('tabs'), document.getElementById('grid'));
+  right.append(hs[1], document.getElementById('log'));
+  wrap.insertBefore(cols, hs[2]);
+  const tick = () => fetch('/live.json', { cache: 'no-store' }).then((r) => r.json()).then((run) => run && render(run)).catch(() => {}).finally(() => setTimeout(tick, 600));
+  tick();
+} else {
 const LIVE = 'https://raw.githubusercontent.com/N-45div/Twice/main/web/run.json';
 fetch(LIVE, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : Promise.reject()))
   .catch(() => fetch('run.json').then((r) => r.json()))
   .then(render)
   .catch(() => { document.getElementById('grid').textContent = 'No run recorded yet.'; });
+}
 </script>
 </body>
 </html>
